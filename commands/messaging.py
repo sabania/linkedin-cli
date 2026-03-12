@@ -4,8 +4,6 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from auth import get_client
-
 app = typer.Typer(no_args_is_help=True)
 console = Console()
 
@@ -13,6 +11,7 @@ console = Console()
 @app.command("list")
 def list_conversations():
     """List recent conversations."""
+    from auth import get_client
     api = get_client()
     convos = api.get_conversations()
 
@@ -40,6 +39,7 @@ def read(
     conversation_urn: str = typer.Argument(..., help="Conversation URN ID"),
 ):
     """Read messages in a conversation."""
+    from auth import get_client
     api = get_client()
     convo = api.get_conversation(conversation_urn_id=conversation_urn)
 
@@ -67,6 +67,7 @@ def send(
     message: str = typer.Argument(..., help="Message text"),
 ):
     """Send a message."""
+    from auth import get_client
     api = get_client()
 
     kwargs = {"message_body": message}
@@ -87,6 +88,7 @@ def seen(
     conversation_urn: str = typer.Argument(..., help="Conversation URN ID"),
 ):
     """Mark a conversation as seen."""
+    from auth import get_client
     api = get_client()
     api.mark_conversation_as_seen(conversation_urn_id=conversation_urn)
     console.print("[green]Marked as seen[/green]")

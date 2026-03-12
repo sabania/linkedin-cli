@@ -4,8 +4,6 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from auth import get_client
-
 app = typer.Typer(no_args_is_help=True)
 console = Console()
 
@@ -21,6 +19,7 @@ def people(
     limit: int = typer.Option(20, "--limit", help="Max results"),
 ):
     """Search for people on LinkedIn."""
+    from auth import get_client
     api = get_client()
 
     kwargs = {}
@@ -61,6 +60,7 @@ def companies(
     keywords: str = typer.Argument(..., help="Search keywords"),
 ):
     """Search for companies."""
+    from auth import get_client
     api = get_client()
     results = api.search_companies(keywords=[keywords])
 
@@ -89,6 +89,7 @@ def jobs(
     limit: int = typer.Option(20, "--limit", help="Max results"),
 ):
     """Search for jobs."""
+    from auth import get_client
     api = get_client()
 
     kwargs = {}

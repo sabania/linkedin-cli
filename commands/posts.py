@@ -4,8 +4,6 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from auth import get_client
-
 app = typer.Typer(no_args_is_help=True)
 console = Console()
 
@@ -16,6 +14,7 @@ def comments(
     count: int = typer.Option(20, "--count", "-n", help="Number of comments"),
 ):
     """Show comments on a post with author profiles."""
+    from auth import get_client
     api = get_client()
     # Allow passing just the activity ID
     if not post_urn.startswith("urn:"):
@@ -50,6 +49,7 @@ def reactions(
     limit: int = typer.Option(50, "--limit", "-n"),
 ):
     """Show who reacted to a post with their profiles."""
+    from auth import get_client
     api = get_client()
     if not post_urn.startswith("urn:"):
         post_urn = f"urn:li:activity:{post_urn}"

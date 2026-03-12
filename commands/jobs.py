@@ -4,8 +4,6 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from auth import get_client
-
 app = typer.Typer(no_args_is_help=True)
 console = Console()
 
@@ -15,6 +13,7 @@ def show(
     job_id: str = typer.Argument(..., help="Job ID"),
 ):
     """Show job details."""
+    from auth import get_client
     api = get_client()
     job = api.get_job(job_id=job_id)
 
@@ -36,6 +35,7 @@ def skills(
     job_id: str = typer.Argument(..., help="Job ID"),
 ):
     """Show required skills for a job."""
+    from auth import get_client
     api = get_client()
     result = api.get_job_skills(job_id=job_id)
     console.print_json(data=result)

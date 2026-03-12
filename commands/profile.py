@@ -6,8 +6,6 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from auth import get_client
-
 app = typer.Typer(no_args_is_help=True)
 console = Console()
 
@@ -17,6 +15,7 @@ def show(
     username: str = typer.Argument(..., help="LinkedIn public profile ID"),
 ):
     """Show a LinkedIn profile."""
+    from auth import get_client
     api = get_client()
     profile = api.get_profile(public_id=username)
 
@@ -39,6 +38,7 @@ def contact(
     username: str = typer.Argument(..., help="LinkedIn public profile ID"),
 ):
     """Show contact info for a profile."""
+    from auth import get_client
     api = get_client()
     info = api.get_profile_contact_info(public_id=username)
 
@@ -59,6 +59,7 @@ def skills(
     username: str = typer.Argument(..., help="LinkedIn public profile ID"),
 ):
     """List skills of a profile."""
+    from auth import get_client
     api = get_client()
     result = api.get_profile_skills(public_id=username)
 
@@ -77,6 +78,7 @@ def experiences(
     urn_id: str = typer.Argument(..., help="LinkedIn URN ID"),
 ):
     """List experiences of a profile."""
+    from auth import get_client
     api = get_client()
     result = api.get_profile_experiences(urn_id=urn_id)
 
@@ -91,6 +93,7 @@ def connections(
     urn_id: str = typer.Argument(..., help="LinkedIn URN ID"),
 ):
     """List connections of a profile."""
+    from auth import get_client
     api = get_client()
     result = api.get_profile_connections(urn_id=urn_id)
 
@@ -116,6 +119,7 @@ def posts(
     count: int = typer.Option(10, "--count", "-n", help="Number of posts"),
 ):
     """List posts from a profile."""
+    from auth import get_client
     api = get_client()
     result = api.get_profile_posts(public_id=username, post_count=count)
 
@@ -139,6 +143,7 @@ def posts(
 @app.command()
 def views():
     """Show who viewed your profile."""
+    from auth import get_client
     api = get_client()
     result = api.get_current_profile_views()
     console.print_json(data=result)
@@ -149,6 +154,7 @@ def network(
     username: str = typer.Argument(..., help="LinkedIn public profile ID"),
 ):
     """Show network info for a profile."""
+    from auth import get_client
     api = get_client()
     result = api.get_profile_network_info(public_profile_id=username)
     console.print_json(data=result)
@@ -159,6 +165,7 @@ def raw(
     username: str = typer.Argument(..., help="LinkedIn public profile ID"),
 ):
     """Dump raw profile JSON."""
+    from auth import get_client
     api = get_client()
     profile = api.get_profile(public_id=username)
     console.print_json(data=profile)

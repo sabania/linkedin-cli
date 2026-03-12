@@ -4,8 +4,6 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from auth import get_client
-
 app = typer.Typer(no_args_is_help=True)
 console = Console()
 
@@ -15,6 +13,7 @@ def show(
     public_id: str = typer.Argument(..., help="Company public ID (URL slug)"),
 ):
     """Show company details."""
+    from auth import get_client
     api = get_client()
     company = api.get_company(public_id=public_id)
 
@@ -38,6 +37,7 @@ def updates(
     limit: int = typer.Option(10, "--limit", "-n"),
 ):
     """Show recent company updates/posts."""
+    from auth import get_client
     api = get_client()
     result = api.get_company_updates(public_id=public_id, max_results=limit)
 
@@ -52,6 +52,7 @@ def follow(
     urn: str = typer.Argument(..., help="Company following state URN"),
 ):
     """Follow a company."""
+    from auth import get_client
     api = get_client()
     api.follow_company(following_state_urn=urn, following=True)
     console.print("[green]Now following[/green]")
@@ -62,6 +63,7 @@ def unfollow(
     urn: str = typer.Argument(..., help="Entity URN to unfollow"),
 ):
     """Unfollow an entity."""
+    from auth import get_client
     api = get_client()
     api.unfollow_entity(urn_id=urn)
     console.print("[yellow]Unfollowed[/yellow]")

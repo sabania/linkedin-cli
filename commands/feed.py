@@ -3,8 +3,6 @@
 import typer
 from rich.console import Console
 
-from auth import get_client
-
 app = typer.Typer(no_args_is_help=True)
 console = Console()
 
@@ -16,6 +14,7 @@ def list(
     no_promoted: bool = typer.Option(True, "--no-promoted/--with-promoted", help="Exclude promoted posts"),
 ):
     """Show your LinkedIn feed."""
+    from auth import get_client
     api = get_client()
     posts = api.get_feed_posts(limit=limit, offset=offset, exclude_promoted_posts=no_promoted)
 

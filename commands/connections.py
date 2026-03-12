@@ -4,8 +4,6 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from auth import get_client
-
 app = typer.Typer(no_args_is_help=True)
 console = Console()
 
@@ -15,6 +13,7 @@ def invitations(
     limit: int = typer.Option(10, "--limit", "-n"),
 ):
     """Show pending invitations."""
+    from auth import get_client
     api = get_client()
     result = api.get_invitations(limit=limit)
 
@@ -41,6 +40,7 @@ def add(
     message: str = typer.Option("", "--message", "-m", help="Connection request message"),
 ):
     """Send a connection request."""
+    from auth import get_client
     api = get_client()
     api.add_connection(profile_public_id=username, message=message)
     console.print(f"[green]Connection request sent to {username}[/green]")
@@ -51,6 +51,7 @@ def remove(
     username: str = typer.Argument(..., help="LinkedIn public profile ID"),
 ):
     """Remove a connection."""
+    from auth import get_client
     api = get_client()
     api.remove_connection(public_profile_id=username)
     console.print(f"[yellow]Removed connection: {username}[/yellow]")
@@ -62,6 +63,7 @@ def accept(
     shared_secret: str = typer.Argument(..., help="Invitation shared secret"),
 ):
     """Accept a connection invitation."""
+    from auth import get_client
     api = get_client()
     api.reply_invitation(
         invitation_entity_urn=entity_urn,
@@ -77,6 +79,7 @@ def decline(
     shared_secret: str = typer.Argument(..., help="Invitation shared secret"),
 ):
     """Decline a connection invitation."""
+    from auth import get_client
     api = get_client()
     api.reply_invitation(
         invitation_entity_urn=entity_urn,
