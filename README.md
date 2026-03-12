@@ -13,15 +13,15 @@ Uses Selenium with a real Chrome browser under the hood, so LinkedIn's bot detec
 
 ### Binary (kein Python nötig)
 
-Download für dein OS von [Releases](../../releases):
+Download ZIP für dein OS von [Releases](../../releases):
 
 | OS | Datei |
 |----|-------|
-| Windows | `linkedin-cli.exe` |
-| macOS | `linkedin-cli-macos` |
-| Linux | `linkedin-cli-linux` |
+| Windows | `linkedin-cli-windows.zip` |
+| macOS | `linkedin-cli-macos.zip` |
+| Linux | `linkedin-cli-linux.zip` |
 
-Einfach ausführen — keine Installation, keine Dependencies, nur Chrome:
+ZIP entpacken und aus dem Ordner ausführen — keine Installation, keine Dependencies, nur Chrome:
 
 ```bash
 # Windows
@@ -172,10 +172,10 @@ All profile IDs returned by `posts reactions` and `posts comments` are directly 
 
 ```bash
 pip install pyinstaller
-pyinstaller --onefile --name linkedin-cli main.py
+pyinstaller --name linkedin-cli main.py
 ```
 
-Output: `dist/linkedin-cli` (or `dist/linkedin-cli.exe` on Windows).
+Output: `dist/linkedin-cli/` directory with the executable and dependencies.
 
 The binary is self-contained. End users only need **Google Chrome** — nothing else.
 
