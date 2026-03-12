@@ -104,25 +104,41 @@ class LinkedinClient:
         identifier = public_id or urn_id
         if not identifier:
             return []
-        # Scrape skills from the profile skills section
         self.driver.get(f"https://www.linkedin.com/in/{identifier}/details/skills/")
-        time.sleep(3)
-        script = """
+        time.sleep(4)
+        for i in range(5):
+            self.driver.execute_script(f"window.scrollTo(0, {(i + 1) * 500})")
+            time.sleep(0.3)
+        time.sleep(1)
+        script = r'''
         var skills = [];
-        document.querySelectorAll('[data-field="skill_page_skill_topic"]').forEach(el => {
-            var name = el.querySelector('span[aria-hidden="true"]');
-            if (name) skills.push({name: name.innerText.trim()});
-        });
-        if (!skills.length) {
-            document.querySelectorAll('.artdeco-list__item').forEach(el => {
-                var span = el.querySelector('span[aria-hidden="true"]');
-                if (span && span.innerText.trim().length > 1) {
-                    skills.push({name: span.innerText.trim()});
-                }
-            });
+        var text = document.body.innerText;
+        var lines = text.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l.length > 1; });
+        var started = false;
+        var stopWords = ['Ihre Besucher', 'Weitere laden', 'Info', 'Barrierefreiheit'];
+        var skipWords = ['Alle', 'Branchenwissen', 'Tools & Technologien', 'Tools & Technologies',
+                         'Industry Knowledge', 'Interpersonal Skills', 'Other Skills', 'Kenntnisse',
+                         'LinkedIn Kenntnistest', 'Kenntnisbestätigungen', 'Kenntnisbestätigung'];
+        for (var i = 0; i < lines.length; i++) {
+            var l = lines[i];
+            if (l === 'Kenntnisse' || l === 'Skills') { started = true; continue; }
+            if (!started) continue;
+            var stop = false;
+            for (var j = 0; j < stopWords.length; j++) {
+                if (l.indexOf(stopWords[j]) >= 0) { stop = true; break; }
+            }
+            if (stop) break;
+            var skip = false;
+            for (var j = 0; j < skipWords.length; j++) {
+                if (l === skipWords[j] || l.indexOf('Kenntnistest') >= 0 || l.match(/^\d+ Kenntnisbest/)) { skip = true; break; }
+            }
+            if (skip) continue;
+            if (l.length > 1 && l.length < 60) {
+                skills.push({name: l});
+            }
         }
         return skills;
-        """
+        '''
         return self.driver.execute_script(script) or []
 
     def get_profile_posts(self, public_id=None, urn_id=None, post_count=10) -> list:
@@ -391,11 +407,13 @@ class LinkedinClient:
 
     def get_profile_connections(self, urn_id: str) -> list:
         """Get connections of a profile."""
+        # connectionOf needs just the member identity hash, not the full URN
+        member_id = urn_id.split(":")[-1] if ":" in urn_id else urn_id
         data = self._api_get(
             f"/search/dash/clusters?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175"
             f"&origin=MEMBER_PROFILE_CANNED_SEARCH&q=all"
             f"&query=(flagshipSearchIntent:SEARCH_SRP,queryParameters:"
-            f"(resultType:List(PEOPLE),network:List(F),connectionOf:List({urn_id})))"
+            f"(resultType:List(PEOPLE),network:List(F),connectionOf:List({member_id})))"
         )
         results = []
         for cluster in data.get("elements", []):
@@ -499,9 +517,55 @@ class LinkedinClient:
         '''
         return self.driver.execute_script(script) or []
 
-    def get_conversation(self, conversation_urn_id: str) -> dict:
-        data = self._api_get(f"/messaging/conversations/{conversation_urn_id}/events")
-        return data
+    def get_conversation(self, conversation_urn_id: str = None, name: str = None) -> list:
+        """Get messages from a conversation. Pass name to find by participant name."""
+        if name:
+            # Use get_conversations to ensure the page is loaded
+            self.get_conversations()
+            # Click on the conversation matching the name
+            clicked = self.driver.execute_script("""
+                var items = document.querySelectorAll('.msg-conversation-listitem');
+                var target = arguments[0].toLowerCase();
+                for (var i = 0; i < items.length; i++) {
+                    var text = items[i].innerText.toLowerCase();
+                    if (text.indexOf(target) >= 0) {
+                        items[i].click();
+                        return true;
+                    }
+                }
+                return false;
+            """, name.lower())
+            if not clicked:
+                return []
+            time.sleep(2)
+            # Scrape messages from the thread panel
+            script = r'''
+            var msgs = [];
+            var seen = {};
+            var events = document.querySelectorAll(".msg-s-event-listitem");
+            for (var i = 0; i < events.length; i++) {
+                var ev = events[i];
+                var senderEl = ev.querySelector(".msg-s-message-group__name");
+                var bodyEl = ev.querySelector(".msg-s-event-listitem__body");
+                var timeEl = ev.querySelector("time");
+                var body = bodyEl ? bodyEl.innerText.trim() : '';
+                if (!body) continue;
+                var key = body.substring(0, 80);
+                if (seen[key]) continue;
+                seen[key] = true;
+                msgs.push({
+                    sender: senderEl ? senderEl.innerText.trim() : '',
+                    body: body,
+                    time: timeEl ? timeEl.innerText.trim() : ''
+                });
+            }
+            return msgs;
+            '''
+            return self.driver.execute_script(script) or []
+        elif conversation_urn_id:
+            data = self._api_get(f"/messaging/conversations/{conversation_urn_id}/events")
+            return data.get("elements", []) if isinstance(data, dict) else []
+        return []
 
     def send_message(self, message_body: str, conversation_urn_id=None, recipients=None):
         # Messages require POST - use fetch in browser

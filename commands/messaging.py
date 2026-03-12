@@ -32,27 +32,29 @@ def list_conversations():
 
 @app.command()
 def read(
-    conversation_urn: str = typer.Argument(..., help="Conversation URN ID"),
+    name: str = typer.Argument(..., help="Participant name to find conversation"),
 ):
-    """Read messages in a conversation."""
+    """Read messages in a conversation by participant name."""
     from auth import get_client
     api = get_client()
-    convo = api.get_conversation(conversation_urn_id=conversation_urn)
+    messages = api.get_conversation(name=name)
 
-    if isinstance(convo, dict):
-        events = convo.get("events", [])
-    elif isinstance(convo, list):
-        events = convo
-    else:
-        events = []
+    if not messages:
+        console.print(f"[yellow]No conversation found for '{name}'[/yellow]")
+        return
 
-    for msg in events:
-        sender = msg.get("from", {})
-        name = f"{sender.get('firstName', '')} {sender.get('lastName', '')}"
-        text = msg.get("eventContent", {}).get("messageEvent", {}).get("body", "") if isinstance(msg.get("eventContent"), dict) else str(msg.get("eventContent", ""))
-
-        console.print(f"[bold cyan]{name}[/bold cyan]")
-        console.print(f"  {text}")
+    console.print(f"[bold]Conversation with '{name}'[/bold]\n")
+    last_sender = ""
+    for msg in messages:
+        sender = msg.get("sender", "")
+        body = msg.get("body", "")
+        time_str = msg.get("time", "")
+        if sender and sender != last_sender:
+            console.print(f"[bold cyan]{sender}[/bold cyan]  [dim]{time_str}[/dim]")
+            last_sender = sender
+        elif not sender and time_str:
+            console.print(f"  [dim]{time_str}[/dim]")
+        console.print(f"  {body}")
         console.print()
 
 

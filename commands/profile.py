@@ -47,10 +47,15 @@ def contact(
     table.add_column("Field", style="cyan")
     table.add_column("Value", style="green")
 
-    table.add_row("Email", str(info.get("email_address", "")))
-    table.add_row("Phone", str(info.get("phone_numbers", [])))
-    table.add_row("Twitter", str(info.get("twitter", [])))
-    table.add_row("Websites", str(info.get("websites", [])))
+    def fmt(val):
+        if isinstance(val, list):
+            return ", ".join(str(v) for v in val) if val else ""
+        return str(val) if val else ""
+
+    table.add_row("Email", fmt(info.get("email_address", "")))
+    table.add_row("Phone", fmt(info.get("phone_numbers", [])))
+    table.add_row("Twitter", fmt(info.get("twitter", [])))
+    table.add_row("Websites", fmt(info.get("websites", [])))
 
     console.print(table)
 
