@@ -1,5 +1,17 @@
 """LinkedIn CLI - Command line interface for LinkedIn management."""
 
+import os
+import sys
+
+# Fix Unicode output on Windows (PyInstaller binary + cmd.exe)
+if sys.platform == "win32":
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 import typer
 
 from commands.profile import app as profile_app
