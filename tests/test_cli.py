@@ -140,6 +140,50 @@ class TestPostsReactions:
 
 
 # ──────────────────────────────────────────────
+# profile views
+# ──────────────────────────────────────────────
+
+class TestProfileViews:
+    def test_profile_views_exits_ok(self, cli_app):
+        result = runner.invoke(cli_app, ["profile", "views"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+
+
+# ──────────────────────────────────────────────
+# profile connections
+# ──────────────────────────────────────────────
+
+class TestProfileConnections:
+    def test_profile_connections_exits_ok(self, cli_app, my_urn_id):
+        if not my_urn_id:
+            pytest.skip("No URN ID available")
+        result = runner.invoke(cli_app, ["profile", "connections", my_urn_id])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+
+
+# ──────────────────────────────────────────────
+# profile experiences
+# ──────────────────────────────────────────────
+
+class TestProfileExperiences:
+    def test_profile_experiences_exits_ok(self, cli_app, my_urn_id):
+        if not my_urn_id:
+            pytest.skip("No URN ID available")
+        result = runner.invoke(cli_app, ["profile", "experiences", my_urn_id])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+
+
+# ──────────────────────────────────────────────
+# profile network
+# ──────────────────────────────────────────────
+
+class TestProfileNetwork:
+    def test_profile_network_exits_ok(self, cli_app, my_public_id):
+        result = runner.invoke(cli_app, ["profile", "network", my_public_id])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+
+
+# ──────────────────────────────────────────────
 # connections invitations
 # ──────────────────────────────────────────────
 
@@ -176,6 +220,16 @@ class TestSearchPeople:
 class TestSearchCompanies:
     def test_search_companies_exits_ok(self, cli_app):
         result = runner.invoke(cli_app, ["search", "companies", "microsoft"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+
+
+# ──────────────────────────────────────────────
+# search jobs
+# ──────────────────────────────────────────────
+
+class TestSearchJobs:
+    def test_search_jobs_exits_ok(self, cli_app):
+        result = runner.invoke(cli_app, ["search", "jobs", "python", "--limit", "3"])
         assert result.exit_code == 0, f"Failed: {result.output}"
 
 

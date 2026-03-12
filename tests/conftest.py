@@ -57,6 +57,14 @@ def first_post_activity_id(first_post_urn):
 
 
 @pytest.fixture(scope="session")
+def my_urn_id(me):
+    """URN ID of the logged-in user (e.g. ACoAAB9VU90B...)."""
+    urn = me.get("miniProfile", {}).get("entityUrn", "")
+    # Extract the ID part from urn:li:fs_miniProfile:ACoAAB9VU90B...
+    return urn.split(":")[-1] if urn else ""
+
+
+@pytest.fixture(scope="session")
 def my_first_name(me):
     """First name of the logged-in user."""
     return me.get("miniProfile", {}).get("firstName", "")

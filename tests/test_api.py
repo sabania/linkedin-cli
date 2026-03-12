@@ -177,6 +177,50 @@ class TestReactions:
 
 
 # ──────────────────────────────────────────────
+# Profile Views
+# ──────────────────────────────────────────────
+
+class TestProfileViews:
+    def test_returns_list(self, api):
+        views = api.get_current_profile_views()
+        assert isinstance(views, list)
+
+
+# ──────────────────────────────────────────────
+# Profile Connections
+# ──────────────────────────────────────────────
+
+class TestProfileConnections:
+    def test_returns_list(self, api, my_urn_id):
+        if not my_urn_id:
+            pytest.skip("No URN ID available")
+        conns = api.get_profile_connections(urn_id=my_urn_id)
+        assert isinstance(conns, list)
+
+
+# ──────────────────────────────────────────────
+# Profile Experiences
+# ──────────────────────────────────────────────
+
+class TestProfileExperiences:
+    def test_returns_list(self, api, my_urn_id):
+        if not my_urn_id:
+            pytest.skip("No URN ID available")
+        exps = api.get_profile_experiences(urn_id=my_urn_id)
+        assert isinstance(exps, list)
+
+
+# ──────────────────────────────────────────────
+# Profile Network
+# ──────────────────────────────────────────────
+
+class TestProfileNetwork:
+    def test_returns_dict(self, api, my_public_id):
+        info = api.get_profile_network_info(public_profile_id=my_public_id)
+        assert isinstance(info, dict)
+
+
+# ──────────────────────────────────────────────
 # Messaging (read-only)
 # ──────────────────────────────────────────────
 
