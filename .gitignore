@@ -21,7 +21,6 @@ config.json
 .env
 
 # Build artifacts
-*.spec
 *.exe
 
 # OS
