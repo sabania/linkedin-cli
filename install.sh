@@ -16,20 +16,20 @@ fi
 # Detect OS
 OS=$(uname -s)
 case "$OS" in
-    Linux*)  ZIP_NAME="linkedin-cli-linux.zip";  BIN_NAME="linkedin-cli-linux" ;;
-    Darwin*) ZIP_NAME="linkedin-cli-macos.zip";   BIN_NAME="linkedin-cli-macos" ;;
+    Linux*)  ARCHIVE="linkedin-cli-linux.tar.gz";  BIN_NAME="linkedin-cli-linux" ;;
+    Darwin*) ARCHIVE="linkedin-cli-macos.tar.gz";   BIN_NAME="linkedin-cli-macos" ;;
     *)       echo "Unsupported OS: $OS"; exit 1 ;;
 esac
 
 # Get latest release version
 echo "Fetching latest release..."
 LATEST=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name"' | head -1 | cut -d'"' -f4)
-URL="https://github.com/$REPO/releases/download/$LATEST/$ZIP_NAME"
+URL="https://github.com/$REPO/releases/download/$LATEST/$ARCHIVE"
 
 # Download
 TMP=$(mktemp -d)
 echo "Downloading linkedin-cli $LATEST..."
-curl -fsSL -o "$TMP/$ZIP_NAME" "$URL"
+curl -fsSL -o "$TMP/$ARCHIVE" "$URL"
 
 # Clean previous install
 rm -rf "$INSTALL_DIR"
@@ -37,7 +37,7 @@ mkdir -p "$INSTALL_DIR"
 
 # Extract
 echo "Installing to $INSTALL_DIR..."
-unzip -q "$TMP/$ZIP_NAME" -d "$INSTALL_DIR"
+tar -xzf "$TMP/$ARCHIVE" -C "$INSTALL_DIR"
 rm -rf "$TMP"
 
 # Flatten if nested in a subdirectory

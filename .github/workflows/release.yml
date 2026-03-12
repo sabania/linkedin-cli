@@ -15,13 +15,13 @@ jobs:
         include:
           - os: windows-latest
             name: linkedin-cli
-            zip: linkedin-cli-windows.zip
+            archive: linkedin-cli-windows.zip
           - os: macos-latest
             name: linkedin-cli-macos
-            zip: linkedin-cli-macos.zip
+            archive: linkedin-cli-macos.tar.gz
           - os: ubuntu-latest
             name: linkedin-cli-linux
-            zip: linkedin-cli-linux.zip
+            archive: linkedin-cli-linux.tar.gz
 
     runs-on: ${{ matrix.os }}
 
@@ -50,20 +50,20 @@ jobs:
           find dist/${{ matrix.name }}/_internal -name "selenium-manager" -exec chmod +x {} +
           find dist/${{ matrix.name }}/_internal -name "*.so" -exec chmod +x {} +
 
-      - name: Create ZIP archive (Windows)
+      - name: Create archive (Windows)
         if: runner.os == 'Windows'
-        run: Compress-Archive -Path dist/${{ matrix.name }}/* -DestinationPath dist/${{ matrix.zip }}
+        run: Compress-Archive -Path dist/${{ matrix.name }}/* -DestinationPath dist/${{ matrix.archive }}
         shell: pwsh
 
-      - name: Create ZIP archive (Unix)
+      - name: Create archive (Unix)
         if: runner.os != 'Windows'
-        run: cd dist && zip -r ${{ matrix.zip }} ${{ matrix.name }}/
+        run: cd dist && tar -czf ${{ matrix.archive }} ${{ matrix.name }}/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.zip }}
-          path: dist/${{ matrix.zip }}
+          name: ${{ matrix.archive }}
+          path: dist/${{ matrix.archive }}
 
   release:
     needs: build

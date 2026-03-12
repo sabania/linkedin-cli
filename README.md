@@ -15,12 +15,12 @@ Uses Selenium with a real Chrome browser under the hood, so LinkedIn's bot detec
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/sabania/linkedin-cli/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.ps1 | iex
 ```
 
 **macOS / Linux:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sabania/linkedin-cli/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.sh | bash
 ```
 
 Installiert nach `~/.local/share/linkedin-cli` (Unix) bzw. `%LOCALAPPDATA%\linkedin-cli` (Windows) und fügt es automatisch zum PATH hinzu. Danach Terminal neu starten.
@@ -32,8 +32,8 @@ Download ZIP von [Releases](../../releases), entpacken und Verzeichnis manuell z
 | OS | Datei |
 |----|-------|
 | Windows | `linkedin-cli-windows.zip` |
-| macOS | `linkedin-cli-macos.zip` |
-| Linux | `linkedin-cli-linux.zip` |
+| macOS | `linkedin-cli-macos.tar.gz` |
+| Linux | `linkedin-cli-linux.tar.gz` |
 
 ### From Source (Entwickler)
 
@@ -48,13 +48,13 @@ python main.py login
 
 ```powershell
 # Windows
-irm https://raw.githubusercontent.com/sabania/linkedin-cli/main/install.ps1 | iex -Uninstall
+irm https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.ps1 | iex -Uninstall
 # oder manuell: Ordner %LOCALAPPDATA%\linkedin-cli löschen
 ```
 
 ```bash
 # macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/sabania/linkedin-cli/main/install.sh | bash -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.sh | bash -s -- --uninstall
 # oder manuell: rm -rf ~/.local/share/linkedin-cli ~/.local/bin/linkedin-cli
 ```
 

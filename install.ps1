@@ -7,7 +7,7 @@
 .PARAMETER Uninstall
     Remove linkedin-cli and clean up PATH.
 .EXAMPLE
-    irm https://raw.githubusercontent.com/sabania/linkedin-cli/main/install.ps1 | iex
+    irm https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.ps1 | iex
 #>
 param([switch]$Uninstall)
 
