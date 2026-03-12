@@ -55,4 +55,17 @@ def skills(
     from auth import get_client
     api = get_client()
     result = api.get_job_skills(job_id=job_id)
-    console.print_json(data=result)
+
+    if not result:
+        console.print("[dim]No skills found for this job.[/dim]")
+        return
+
+    table = Table(title=f"Skills: {job_id}")
+    table.add_column("#", style="dim", width=3)
+    table.add_column("Skill", style="green")
+
+    for i, skill in enumerate(result, 1):
+        name = skill.get("name", "") if isinstance(skill, dict) else str(skill)
+        table.add_row(str(i), name)
+
+    console.print(table)

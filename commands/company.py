@@ -50,9 +50,19 @@ def updates(
     api = get_client()
     result = api.get_company_updates(public_id=public_id, max_results=limit)
 
+    if not result:
+        console.print("[dim]No updates found.[/dim]")
+        return
+
     for i, update in enumerate(result, 1):
+        text = update.get("text", "").strip()
+        urn = update.get("urn", "")
+        rx = update.get("reactions", "0")
+        cm = update.get("comments", "0")
         console.print(f"[bold cyan]Update {i}[/bold cyan]")
-        console.print_json(data=update)
+        console.print(text[:300] if text else "[dim]No text[/dim]")
+        console.print(f"Reactions: {rx} | Comments: {cm}")
+        console.print(f"[dim]{urn}[/dim]")
         console.print("---")
 
 

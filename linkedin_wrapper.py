@@ -262,9 +262,18 @@ class LinkedinClient:
             "  var textEl = el.querySelector('[class*=\"comment-item__main-content\"] span[dir], [class*=\"comment__text\"] span[dir]');"
             "  if (!textEl) { var spans = el.querySelectorAll('span[dir]'); for (var i=0;i<spans.length;i++) { if (spans[i].innerText.length > 20) { textEl = spans[i]; break; } } }"
             "  var link = el.querySelector('a[href*=\"/in/\"]');"
-            "  var nameEl = link ? link.querySelector('span') : null;"
+            "  var name = '';"
+            "  if (link) {"
+            "    var nameEl = link.querySelector('span[dir] span, span.hoverable-link-text, span');"
+            "    if (nameEl) name = nameEl.innerText.trim().split('\\n')[0];"
+            "    if (!name) name = link.innerText.trim().split('\\n')[0];"
+            "  }"
+            "  if (!name) {"
+            "    var actorEl = el.querySelector('[class*=\"comment-item__actor\"], [class*=\"actor\"]');"
+            "    if (actorEl) name = actorEl.innerText.trim().split('\\n')[0];"
+            "  }"
             "  comments.push({"
-            "    author: nameEl ? nameEl.innerText.trim().split('\\n')[0] : '',"
+            "    author: name,"
             "    text: textEl ? textEl.innerText.trim().substring(0, 500) : '',"
             "    profileUrl: link ? link.getAttribute('href') : '',"
             "    profileId: link ? link.getAttribute('href').split('/in/')[1].replace('/','') : ''"
@@ -307,24 +316,28 @@ class LinkedinClient:
         )
         time.sleep(3)
 
-        # Scroll inside modal to load more
+        # Scroll inside modal to load more (gentle scrolling to avoid tab crash)
         count = max_results or 50
-        for _ in range(count // 10):
-            self.driver.execute_script(
-                "var modal = document.querySelector('.artdeco-modal__content');"
-                "if (modal) modal.scrollTop = modal.scrollHeight;"
-            )
-            time.sleep(1)
+        for _ in range(min(count // 10, 3)):
+            try:
+                self.driver.execute_script(
+                    "var modal = document.querySelector('.artdeco-modal__content, [role=\"dialog\"] .overflow-y-auto');"
+                    "if (modal) modal.scrollTop = modal.scrollHeight;"
+                )
+                time.sleep(1.5)
+            except Exception:
+                break
 
         script = (
             "var reactions = [];"
-            "var els = document.querySelectorAll('.social-details-reactors-tab-body-list-item');"
+            "var els = document.querySelectorAll('.social-details-reactors-tab-body-list-item, [class*=\"reactors\"] li');"
             "els.forEach(function(el) {"
             "  var link = el.querySelector('a[href*=\"/in/\"]');"
-            "  var lockup = el.querySelector('.artdeco-entity-lockup');"
-            "  var titleEl = lockup ? lockup.querySelector('.artdeco-entity-lockup__title') : null;"
-            "  var subtitleEl = lockup ? lockup.querySelector('.artdeco-entity-lockup__subtitle, .artdeco-entity-lockup__caption, p') : null;"
+            "  var lockup = el.querySelector('.artdeco-entity-lockup, [class*=\"entity-lockup\"]');"
+            "  var titleEl = lockup ? lockup.querySelector('.artdeco-entity-lockup__title, [class*=\"lockup__title\"]') : null;"
+            "  var subtitleEl = lockup ? lockup.querySelector('.artdeco-entity-lockup__subtitle, .artdeco-entity-lockup__caption, [class*=\"lockup__subtitle\"], p') : null;"
             "  var name = titleEl ? titleEl.innerText.trim().split('\\n')[0] : '';"
+            "  if (!name && link) name = link.innerText.trim().split('\\n')[0];"
             "  reactions.push({"
             "    name: name,"
             "    profileUrl: link ? link.getAttribute('href') : '',"
@@ -334,7 +347,10 @@ class LinkedinClient:
             "});"
             "return reactions;"
         )
-        reactions = self.driver.execute_script(script) or []
+        try:
+            reactions = self.driver.execute_script(script) or []
+        except Exception:
+            reactions = []
         reactions = reactions[:count]
 
         # Resolve URN-based profile IDs to public identifiers (parallel)
@@ -520,8 +536,9 @@ class LinkedinClient:
     def get_conversation(self, conversation_urn_id: str = None, name: str = None) -> list:
         """Get messages from a conversation. Pass name to find by participant name."""
         if name:
-            # Use get_conversations to ensure the page is loaded
-            self.get_conversations()
+            # Navigate to messaging page
+            self.driver.get("https://www.linkedin.com/messaging/")
+            time.sleep(5)
             # Click on the conversation matching the name
             clicked = self.driver.execute_script("""
                 var items = document.querySelectorAll('.msg-conversation-listitem');
@@ -537,31 +554,34 @@ class LinkedinClient:
             """, name.lower())
             if not clicked:
                 return []
-            time.sleep(2)
-            # Scrape messages from the thread panel
-            script = r'''
-            var msgs = [];
-            var seen = {};
-            var events = document.querySelectorAll(".msg-s-event-listitem");
-            for (var i = 0; i < events.length; i++) {
-                var ev = events[i];
-                var senderEl = ev.querySelector(".msg-s-message-group__name");
-                var bodyEl = ev.querySelector(".msg-s-event-listitem__body");
-                var timeEl = ev.querySelector("time");
-                var body = bodyEl ? bodyEl.innerText.trim() : '';
-                if (!body) continue;
-                var key = body.substring(0, 80);
-                if (seen[key]) continue;
-                seen[key] = true;
-                msgs.push({
-                    sender: senderEl ? senderEl.innerText.trim() : '',
-                    body: body,
-                    time: timeEl ? timeEl.innerText.trim() : ''
-                });
-            }
-            return msgs;
-            '''
-            return self.driver.execute_script(script) or []
+            time.sleep(4)
+            # Scrape messages — use a simple, lightweight script to avoid tab crash
+            try:
+                msgs = self.driver.execute_script(r'''
+                    var msgs = [];
+                    var seen = {};
+                    var events = document.querySelectorAll(".msg-s-event-listitem");
+                    for (var i = 0; i < events.length; i++) {
+                        var ev = events[i];
+                        var senderEl = ev.querySelector(".msg-s-message-group__name");
+                        var bodyEl = ev.querySelector(".msg-s-event-listitem__body");
+                        var timeEl = ev.querySelector("time");
+                        var body = bodyEl ? bodyEl.innerText.trim() : ev.innerText.trim().substring(0, 300);
+                        if (!body || body.length < 2) continue;
+                        var key = body.substring(0, 80);
+                        if (seen[key]) continue;
+                        seen[key] = true;
+                        msgs.push({
+                            sender: senderEl ? senderEl.innerText.trim() : '',
+                            body: body,
+                            time: timeEl ? timeEl.innerText.trim() : ''
+                        });
+                    }
+                    return msgs;
+                ''') or []
+            except Exception:
+                msgs = []
+            return msgs
         elif conversation_urn_id:
             data = self._api_get(f"/messaging/conversations/{conversation_urn_id}/events")
             return data.get("elements", []) if isinstance(data, dict) else []
@@ -706,11 +726,39 @@ class LinkedinClient:
 
     def get_company_updates(self, public_id=None, urn_id=None, max_results=10, results=None) -> list:
         identifier = public_id or urn_id
-        data = self._api_get(
-            f"/feed/updates?q=companyRelevanceFeed&moduleKey=member-share"
-            f"&count={max_results}&companyUniversalName={identifier}"
+        # Scrape company posts page since the API endpoint is deprecated
+        self.driver.get(f"https://www.linkedin.com/company/{identifier}/posts/")
+        time.sleep(4)
+        for i in range(max(1, max_results // 3)):
+            self.driver.execute_script(f"window.scrollBy(0, 1000)")
+            time.sleep(1)
+        script = (
+            "var posts = [];"
+            "var els = document.querySelectorAll('[data-urn]');"
+            "els.forEach(function(el) {"
+            "  var urn = el.getAttribute('data-urn');"
+            "  if (!urn || urn.indexOf('activity') === -1) return;"
+            "  var text = '';"
+            "  var spans = el.querySelectorAll('span[dir]');"
+            "  for (var i = 0; i < spans.length; i++) {"
+            "    var t = spans[i].innerText || '';"
+            "    if (t.length > text.length && t.length > 20) text = t;"
+            "  }"
+            "  var rxBtn = el.querySelector('button[data-reaction-details]');"
+            "  var rxText = rxBtn ? rxBtn.innerText.trim() : '';"
+            "  var rxMatch = rxText.match(/(\\d[\\d.,]*)/);"
+            "  var rxCount = rxMatch ? rxMatch[1] : (rxBtn ? '1' : '0');"
+            "  var cmLi = el.querySelector('li.social-details-social-counts__comments');"
+            "  var cmBtn = cmLi ? cmLi.querySelector('button') : null;"
+            "  var cmText = cmBtn ? cmBtn.innerText.trim() : '';"
+            "  var cmMatch = cmText.match(/(\\d[\\d.,]*)/);"
+            "  var cmCount = cmMatch ? cmMatch[1] : '0';"
+            "  posts.push({urn: urn, text: text.substring(0, 500), reactions: rxCount, comments: cmCount});"
+            "});"
+            "return posts;"
         )
-        return data.get("elements", [])
+        posts = self.driver.execute_script(script) or []
+        return posts[:max_results]
 
     def follow_company(self, following_state_urn: str, following: bool = True):
         """Follow or unfollow a company."""
@@ -761,9 +809,55 @@ class LinkedinClient:
                     pass
         return data
 
-    def get_job_skills(self, job_id: str) -> dict:
+    def get_job_skills(self, job_id: str) -> list:
         """Get skills required for a job."""
-        return self._api_get(f"/jobs/jobPostings/{job_id}/skillMatchStatuses")
+        # Try API first
+        data = self._api_get(f"/jobs/jobPostings/{job_id}/skillMatchStatuses")
+        if data and data.get("elements"):
+            return data.get("elements", [])
+        # Fallback: extract skills from the job description via API
+        job = self._api_get(f"/jobs/jobPostings/{job_id}")
+        desc_text = ""
+        desc = job.get("description", {})
+        if isinstance(desc, dict):
+            desc_text = desc.get("text", "")
+        elif isinstance(desc, str):
+            desc_text = desc
+        if not desc_text:
+            return []
+        # Extract qualifications/skills from description text
+        import re
+        skills = []
+        seen = set()
+        skip_words = ['equal opportunity', 'accommodat', 'position will be open',
+                       'microsoft is', 'benefits', 'salary', 'compensation']
+        # Split into sections by common headers
+        sections = re.split(
+            r'\n(?=(?:Required|Preferred|Qualifications|Skills|Kenntnisse|Requirements|Anforderungen))',
+            desc_text, flags=re.IGNORECASE
+        )
+        for section in sections:
+            header_match = re.match(
+                r'(Required|Preferred|Qualifications|Skills|Kenntnisse|Requirements|Anforderungen)[^\n]*',
+                section, re.IGNORECASE
+            )
+            if not header_match:
+                continue
+            body = section[header_match.end():].strip()
+            if not body:
+                continue
+            # Split by sentence boundaries or line breaks
+            items = re.split(r'(?:\.\s*(?=[A-Z0-9])|\n)', body)
+            for item in items:
+                item = re.sub(r'^[\s•\-\*\d.)+]+', '', item).strip()
+                if not item or len(item) < 10 or len(item) > 200:
+                    continue
+                if any(sw in item.lower() for sw in skip_words):
+                    continue
+                if item.lower() not in seen:
+                    seen.add(item.lower())
+                    skills.append({"name": item})
+        return skills
 
     def search_companies(self, keywords=None) -> list:
         kw = keywords[0] if isinstance(keywords, list) else (keywords or "")
