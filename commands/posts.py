@@ -11,7 +11,7 @@ console = Console()
 @app.command()
 def comments(
     post_urn: str = typer.Argument(..., help="Post URN or activity ID (e.g. 7435982583777169408)"),
-    count: int = typer.Option(20, "--count", "-n", help="Number of comments"),
+    limit: int = typer.Option(50, "--limit", "-n", help="Number of comments"),
 ):
     """Show comments on a post with author profiles."""
     from auth import get_client
@@ -20,7 +20,7 @@ def comments(
     if not post_urn.startswith("urn:"):
         post_urn = f"urn:li:activity:{post_urn}"
 
-    result = api.get_post_comments(post_urn=post_urn, comment_count=count)
+    result = api.get_post_comments(post_urn=post_urn, limit=limit)
 
     if not result:
         console.print("[dim]No comments found.[/dim]")
@@ -54,7 +54,7 @@ def reactions(
     if not post_urn.startswith("urn:"):
         post_urn = f"urn:li:activity:{post_urn}"
 
-    result = api.get_post_reactions(post_urn=post_urn, max_results=limit)
+    result = api.get_post_reactions(post_urn=post_urn, limit=limit)
 
     if not result:
         console.print("[dim]No reactions found.[/dim]")

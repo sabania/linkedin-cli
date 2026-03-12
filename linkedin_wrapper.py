@@ -141,8 +141,9 @@ class LinkedinClient:
         '''
         return self.driver.execute_script(script) or []
 
-    def get_profile_posts(self, public_id=None, urn_id=None, post_count=10) -> list:
+    def get_profile_posts(self, public_id=None, urn_id=None, limit=25, post_count=None) -> list:
         """Get posts from a profile by scraping the activity page."""
+        limit = post_count or limit
         identifier = public_id or urn_id
         if not identifier:
             return []
@@ -151,9 +152,10 @@ class LinkedinClient:
         time.sleep(4)
 
         # Scroll to load more posts
-        for _ in range(max(1, post_count // 5)):
+        scroll_count = min(max(3, limit // 4), 20)
+        for _ in range(scroll_count):
             self.driver.execute_script("window.scrollBy(0, 1000)")
-            time.sleep(1)
+            time.sleep(0.7)
 
         script = (
             "var posts = [];"
@@ -181,15 +183,16 @@ class LinkedinClient:
             "return posts;"
         )
         posts = self.driver.execute_script(script) or []
-        return posts[:post_count]
+        return posts[:limit]
 
-    def get_feed_posts(self, limit=10, offset=0, exclude_promoted_posts=True) -> list:
+    def get_feed_posts(self, limit=25, exclude_promoted_posts=True) -> list:
         """Get feed posts by scraping the rendered feed page."""
         self.driver.get("https://www.linkedin.com/feed/")
         time.sleep(3)
 
         # Scroll to load more posts
-        for _ in range(max(1, limit // 5)):
+        scroll_count = min(max(3, limit // 4), 20)
+        for _ in range(scroll_count):
             self.driver.execute_script("window.scrollBy(0, 1000)")
             time.sleep(1)
 
@@ -237,20 +240,24 @@ class LinkedinClient:
         posts = self.driver.execute_script(script) or []
         return posts[:limit]
 
-    def get_post_comments(self, post_urn: str, comment_count=100) -> list:
+    def get_post_comments(self, post_urn: str, limit=50, comment_count=None) -> list:
         """Get comments on a post by loading the post page."""
+        limit = comment_count or limit
         # Extract activity ID from URN
         activity_id = post_urn.split(":")[-1]
         self.driver.get(f"https://www.linkedin.com/feed/update/urn:li:activity:{activity_id}/")
         time.sleep(4)
 
         # Click "load more comments" buttons
-        for _ in range(3):
+        click_count = min(max(3, limit // 10), 15)
+        for _ in range(click_count):
             try:
-                self.driver.execute_script(
+                found = self.driver.execute_script(
                     "var btn = document.querySelector('[class*=\"show-prev\"], button[class*=\"comments-comments-list__load-more\"]');"
-                    "if (btn) btn.click();"
+                    "if (btn) { btn.click(); return true; } return false;"
                 )
+                if not found:
+                    break
                 time.sleep(1)
             except Exception:
                 break
@@ -290,7 +297,7 @@ class LinkedinClient:
             if key and key not in seen:
                 seen.add(key)
                 unique.append(c)
-        unique = unique[:comment_count]
+        unique = unique[:limit]
 
         # Resolve URN-based profile IDs to public identifiers
         urns = [c["profileId"] for c in unique if c.get("profileId")]
@@ -303,7 +310,7 @@ class LinkedinClient:
 
         return unique
 
-    def get_post_reactions(self, post_urn: str, max_results=None, results=None) -> list:
+    def get_post_reactions(self, post_urn: str, limit=50, max_results=None) -> list:
         """Get reactions on a post by clicking the reactions count."""
         activity_id = post_urn.split(":")[-1]
         self.driver.get(f"https://www.linkedin.com/feed/update/urn:li:activity:{activity_id}/")
@@ -317,8 +324,8 @@ class LinkedinClient:
         time.sleep(3)
 
         # Scroll inside modal to load more (gentle scrolling to avoid tab crash)
-        count = max_results or 50
-        for _ in range(min(count // 10, 3)):
+        count = max_results or limit
+        for _ in range(min(max(3, count // 10), 8)):
             try:
                 self.driver.execute_script(
                     "var modal = document.querySelector('.artdeco-modal__content, [role=\"dialog\"] .overflow-y-auto');"
@@ -421,36 +428,55 @@ class LinkedinClient:
         data = self._api_get("/identity/wvmpCards")
         return data.get("elements", [])
 
-    def get_profile_connections(self, urn_id: str) -> list:
-        """Get connections of a profile."""
-        # connectionOf needs just the member identity hash, not the full URN
-        member_id = urn_id.split(":")[-1] if ":" in urn_id else urn_id
-        data = self._api_get(
-            f"/search/dash/clusters?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175"
-            f"&origin=MEMBER_PROFILE_CANNED_SEARCH&q=all"
-            f"&query=(flagshipSearchIntent:SEARCH_SRP,queryParameters:"
-            f"(resultType:List(PEOPLE),network:List(F),connectionOf:List({member_id})))"
-        )
+    def get_profile_connections(self, public_id=None, urn_id=None, max_results=50) -> list:
+        """Get connections of a profile. Accepts public_id or urn_id."""
+        # connectionOf needs the member identity hash
+        if urn_id:
+            member_id = urn_id.split(":")[-1] if ":" in urn_id else urn_id
+        elif public_id:
+            # Resolve public ID to URN via profile lookup
+            profile = self.get_profile(public_id=public_id)
+            urn = profile.get("entityUrn", "")
+            member_id = urn.split(":")[-1] if urn else ""
+            if not member_id:
+                return []
+        else:
+            return []
         results = []
-        for cluster in data.get("elements", []):
-            for item in cluster.get("items", []):
-                entity = (
-                    item.get("itemUnion", {}).get("entityResult")
-                    or item.get("item", {}).get("entityResult")
-                    or {}
-                )
-                if not entity:
-                    continue
-                title = entity.get("title", {}).get("text", "")
-                subtitle = entity.get("primarySubtitle", {}).get("text", "")
-                nav_url = entity.get("navigationUrl", "")
-                public_id = nav_url.split("/in/")[-1].split("?")[0].rstrip("/") if "/in/" in nav_url else ""
-                results.append({
-                    "firstName": title.split(" ")[0] if title else "",
-                    "lastName": " ".join(title.split(" ")[1:]) if title else "",
-                    "headline": subtitle,
-                    "public_id": public_id,
-                })
+        start = 0
+        page_size = 49  # LinkedIn max per page
+        while start < max_results:
+            count = min(page_size, max_results - start)
+            data = self._api_get(
+                f"/search/dash/clusters?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175"
+                f"&origin=MEMBER_PROFILE_CANNED_SEARCH&q=all&start={start}&count={count}"
+                f"&query=(flagshipSearchIntent:SEARCH_SRP,queryParameters:"
+                f"(resultType:List(PEOPLE),network:List(F),connectionOf:List({member_id})))"
+            )
+            page_results = []
+            for cluster in data.get("elements", []):
+                for item in cluster.get("items", []):
+                    entity = (
+                        item.get("itemUnion", {}).get("entityResult")
+                        or item.get("item", {}).get("entityResult")
+                        or {}
+                    )
+                    if not entity:
+                        continue
+                    title = entity.get("title", {}).get("text", "")
+                    subtitle = entity.get("primarySubtitle", {}).get("text", "")
+                    nav_url = entity.get("navigationUrl", "")
+                    pid = nav_url.split("/in/")[-1].split("?")[0].rstrip("/") if "/in/" in nav_url else ""
+                    page_results.append({
+                        "firstName": title.split(" ")[0] if title else "",
+                        "lastName": " ".join(title.split(" ")[1:]) if title else "",
+                        "headline": subtitle,
+                        "public_id": pid,
+                    })
+            results.extend(page_results)
+            if len(page_results) < count:
+                break  # no more results
+            start += len(page_results)
         return results
 
     def get_profile_experiences(self, urn_id: str) -> list:
@@ -503,10 +529,21 @@ class LinkedinClient:
         )
         return data
 
-    def get_conversations(self) -> list:
+    def get_conversations(self, limit=25) -> list:
         """Get conversations by scraping the messaging page."""
         self.driver.get("https://www.linkedin.com/messaging/")
         time.sleep(4)
+        # Scroll conversation list to load more
+        scroll_count = min(max(1, limit // 10), 8)
+        for _ in range(scroll_count):
+            try:
+                self.driver.execute_script(
+                    "var list = document.querySelector('.msg-conversations-container__conversations-list');"
+                    "if (list) list.scrollTop = list.scrollHeight;"
+                )
+                time.sleep(1)
+            except Exception:
+                break
         script = r'''
         var convos = [];
         var items = document.querySelectorAll('.msg-conversation-listitem');
@@ -531,7 +568,8 @@ class LinkedinClient:
         }
         return convos;
         '''
-        return self.driver.execute_script(script) or []
+        convos = self.driver.execute_script(script) or []
+        return convos[:limit]
 
     def get_conversation(self, conversation_urn_id: str = None, name: str = None) -> list:
         """Get messages from a conversation. Pass name to find by participant name."""
@@ -636,9 +674,19 @@ class LinkedinClient:
             f"return (async () => {{ {script} }})()", url
         )
 
-    def get_invitations(self, start=0, limit=10) -> list:
-        data = self._api_get(f"/relationships/invitationViews?start={start}&count={limit}")
-        return data.get("elements", [])
+    def get_invitations(self, limit=25) -> list:
+        results = []
+        page_size = min(limit, 49)
+        start = 0
+        while start < limit:
+            count = min(page_size, limit - start)
+            data = self._api_get(f"/relationships/invitationViews?start={start}&count={count}")
+            page = data.get("elements", [])
+            results.extend(page)
+            if len(page) < count:
+                break
+            start += len(page)
+        return results[:limit]
 
     def add_connection(self, profile_public_id: str, message="", profile_urn=None):
         url = f"{VOYAGER_API}/growth/normInvitations"
@@ -709,29 +757,41 @@ class LinkedinClient:
             f"return (async () => {{ {script} }})()", url, payload
         )
 
-    def search_people(self, keywords=None, limit=20, **kwargs) -> list:
+    def search_people(self, keywords=None, limit=25, **kwargs) -> list:
         kw = keywords or ""
-        data = self._api_get(
-            f"/search/dash/clusters?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175"
-            f"&origin=GLOBAL_SEARCH_HEADER&q=all&count={limit}"
-            f"&query=(keywords:{kw},flagshipSearchIntent:SEARCH_SRP"
-            f",queryParameters:(resultType:List(PEOPLE)))"
-        )
-        return self._extract_search_results(data)
+        results = []
+        page_size = min(limit, 49)
+        start = 0
+        while start < limit:
+            count = min(page_size, limit - start)
+            data = self._api_get(
+                f"/search/dash/clusters?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175"
+                f"&origin=GLOBAL_SEARCH_HEADER&q=all&start={start}&count={count}"
+                f"&query=(keywords:{kw},flagshipSearchIntent:SEARCH_SRP"
+                f",queryParameters:(resultType:List(PEOPLE)))"
+            )
+            page = self._extract_search_results(data)
+            results.extend(page)
+            if len(page) < count:
+                break
+            start += len(page)
+        return results[:limit]
 
     def get_company(self, public_id) -> dict:
         data = self._api_get(f"/organization/companies?q=universalName&universalName={public_id}")
         elements = data.get("elements", [])
         return elements[0] if elements else {}
 
-    def get_company_updates(self, public_id=None, urn_id=None, max_results=10, results=None) -> list:
+    def get_company_updates(self, public_id=None, urn_id=None, limit=25, max_results=None) -> list:
+        limit = max_results or limit
         identifier = public_id or urn_id
         # Scrape company posts page since the API endpoint is deprecated
         self.driver.get(f"https://www.linkedin.com/company/{identifier}/posts/")
         time.sleep(4)
-        for i in range(max(1, max_results // 3)):
+        scroll_count = min(max(3, limit // 3), 15)
+        for i in range(scroll_count):
             self.driver.execute_script(f"window.scrollBy(0, 1000)")
-            time.sleep(1)
+            time.sleep(0.7)
         script = (
             "var posts = [];"
             "var els = document.querySelectorAll('[data-urn]');"
@@ -758,7 +818,7 @@ class LinkedinClient:
             "return posts;"
         )
         posts = self.driver.execute_script(script) or []
-        return posts[:max_results]
+        return posts[:limit]
 
     def follow_company(self, following_state_urn: str, following: bool = True):
         """Follow or unfollow a company."""
@@ -859,19 +919,29 @@ class LinkedinClient:
                     skills.append({"name": item})
         return skills
 
-    def search_companies(self, keywords=None) -> list:
+    def search_companies(self, keywords=None, limit=25) -> list:
         kw = keywords[0] if isinstance(keywords, list) else (keywords or "")
         if not kw:
             return []
-        data = self._api_get(
-            f"/search/dash/clusters?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175"
-            f"&origin=SWITCH_SEARCH_VERTICAL&q=all"
-            f"&query=(keywords:{kw},flagshipSearchIntent:SEARCH_SRP"
-            f",queryParameters:(resultType:List(COMPANIES)))"
-        )
-        return self._extract_search_results(data)
+        results = []
+        page_size = min(limit, 49)
+        start = 0
+        while start < limit:
+            count = min(page_size, limit - start)
+            data = self._api_get(
+                f"/search/dash/clusters?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175"
+                f"&origin=SWITCH_SEARCH_VERTICAL&q=all&start={start}&count={count}"
+                f"&query=(keywords:{kw},flagshipSearchIntent:SEARCH_SRP"
+                f",queryParameters:(resultType:List(COMPANIES)))"
+            )
+            page = self._extract_search_results(data)
+            results.extend(page)
+            if len(page) < count:
+                break
+            start += len(page)
+        return results[:limit]
 
-    def search_jobs(self, keywords=None, limit=20, **kwargs) -> list:
+    def search_jobs(self, keywords=None, limit=25, **kwargs) -> list:
         """Search jobs by scraping the LinkedIn jobs search page."""
         from urllib.parse import quote
         kw = quote(keywords or "")
@@ -882,9 +952,10 @@ class LinkedinClient:
         self.driver.get(url)
         time.sleep(4)
         # Scroll to load more results
-        for i in range(5):
+        scroll_count = min(max(3, limit // 5), 15)
+        for i in range(scroll_count):
             self.driver.execute_script(f"window.scrollTo(0, {(i + 1) * 800})")
-            time.sleep(0.3)
+            time.sleep(0.5)
         time.sleep(1)
         script = r'''
         var results = [];

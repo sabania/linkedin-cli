@@ -9,14 +9,13 @@ console = Console()
 
 @app.command()
 def list(
-    limit: int = typer.Option(10, "--limit", "-n", help="Number of posts"),
-    offset: int = typer.Option(0, "--offset", help="Offset"),
+    limit: int = typer.Option(25, "--limit", "-n", help="Number of posts"),
     no_promoted: bool = typer.Option(True, "--no-promoted/--with-promoted", help="Exclude promoted posts"),
 ):
     """Show your LinkedIn feed."""
     from auth import get_client
     api = get_client()
-    posts = api.get_feed_posts(limit=limit, offset=offset, exclude_promoted_posts=no_promoted)
+    posts = api.get_feed_posts(limit=limit, exclude_promoted_posts=no_promoted)
 
     if not posts:
         console.print("[dim]No posts found.[/dim]")

@@ -43,12 +43,12 @@ def show(
 @app.command()
 def updates(
     public_id: str = typer.Argument(..., help="Company public ID"),
-    limit: int = typer.Option(10, "--limit", "-n"),
+    limit: int = typer.Option(25, "--limit", "-n"),
 ):
     """Show recent company updates/posts."""
     from auth import get_client
     api = get_client()
-    result = api.get_company_updates(public_id=public_id, max_results=limit)
+    result = api.get_company_updates(public_id=public_id, limit=limit)
 
     if not result:
         console.print("[dim]No updates found.[/dim]")

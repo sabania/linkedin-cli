@@ -10,7 +10,7 @@ console = Console()
 
 @app.command()
 def invitations(
-    limit: int = typer.Option(10, "--limit", "-n"),
+    limit: int = typer.Option(25, "--limit", "-n"),
 ):
     """Show pending invitations."""
     from auth import get_client

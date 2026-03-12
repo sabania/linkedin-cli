@@ -9,11 +9,13 @@ console = Console()
 
 
 @app.command("list")
-def list_conversations():
+def list_conversations(
+    limit: int = typer.Option(25, "--limit", "-n", help="Number of conversations"),
+):
     """List recent conversations."""
     from auth import get_client
     api = get_client()
-    convos = api.get_conversations()
+    convos = api.get_conversations(limit=limit)
 
     table = Table(title="Conversations")
     table.add_column("Participants", style="green")

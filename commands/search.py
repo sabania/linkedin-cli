@@ -16,7 +16,7 @@ def people(
     school: str = typer.Option(None, "--school", "-s", help="School filter"),
     location: str = typer.Option(None, "--location", "-l", help="Region filter"),
     network: str = typer.Option(None, "--network", "-n", help="Network depth: F(irst), S(econd), O(ther)"),
-    limit: int = typer.Option(20, "--limit", help="Max results"),
+    limit: int = typer.Option(25, "--limit", help="Max results"),
 ):
     """Search for people on LinkedIn."""
     from auth import get_client
@@ -58,11 +58,12 @@ def people(
 @app.command()
 def companies(
     keywords: str = typer.Argument(..., help="Search keywords"),
+    limit: int = typer.Option(25, "--limit", "-n", help="Max results"),
 ):
     """Search for companies."""
     from auth import get_client
     api = get_client()
-    results = api.search_companies(keywords=[keywords])
+    results = api.search_companies(keywords=[keywords], limit=limit)
 
     table = Table(title=f"Company Search ({len(results)} results)")
     table.add_column("Name", style="green")
@@ -88,7 +89,7 @@ def jobs(
     location: str = typer.Option(None, "--location", "-l", help="Location name"),
     remote: str = typer.Option(None, "--remote", "-r", help="1=onsite, 2=remote, 3=hybrid"),
     job_type: str = typer.Option(None, "--type", "-t", help="F=full, C=contract, P=part, T=temp, I=intern, V=volunteer"),
-    limit: int = typer.Option(20, "--limit", help="Max results"),
+    limit: int = typer.Option(25, "--limit", help="Max results"),
 ):
     """Search for jobs."""
     from auth import get_client

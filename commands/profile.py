@@ -107,19 +107,20 @@ def experiences(
 
 @app.command()
 def connections(
-    urn_id: str = typer.Argument(..., help="LinkedIn URN ID"),
+    username: str = typer.Argument(..., help="LinkedIn public profile ID"),
+    limit: int = typer.Option(50, "--limit", "-n", help="Max connections to fetch"),
 ):
     """List connections of a profile."""
     from auth import get_client
     api = get_client()
-    result = api.get_profile_connections(urn_id=urn_id)
+    result = api.get_profile_connections(public_id=username, max_results=limit)
 
     table = Table(title="Connections")
     table.add_column("Name", style="green")
     table.add_column("Headline")
     table.add_column("Public ID", style="dim")
 
-    for conn in result[:50]:
+    for conn in result:
         table.add_row(
             f"{conn.get('firstName', '')} {conn.get('lastName', '')}",
             (conn.get("headline", "") or "")[:60],
@@ -127,18 +128,18 @@ def connections(
         )
 
     console.print(table)
-    console.print(f"[dim]Showing {min(50, len(result))} of {len(result)} connections[/dim]")
+    console.print(f"[dim]{len(result)} connections loaded[/dim]")
 
 
 @app.command()
 def posts(
     username: str = typer.Argument(..., help="LinkedIn public profile ID"),
-    count: int = typer.Option(10, "--count", "-n", help="Number of posts"),
+    limit: int = typer.Option(25, "--limit", "-n", help="Number of posts"),
 ):
     """List posts from a profile."""
     from auth import get_client
     api = get_client()
-    result = api.get_profile_posts(public_id=username, post_count=count)
+    result = api.get_profile_posts(public_id=username, limit=limit)
 
     if not result:
         console.print("[dim]No posts found.[/dim]")
