@@ -384,6 +384,27 @@ class LinkedinClient:
             f"return (async () => {{ {script} }})()", url, payload
         )
 
+    def mark_conversation_as_seen(self, conversation_urn_id: str):
+        """Mark a conversation as seen."""
+        url = f"{VOYAGER_API}/messaging/conversations/{conversation_urn_id}"
+        script = """
+        const resp = await fetch(arguments[0], {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-RestLi-Protocol-Version': '2.0.0',
+                'csrf-token': document.cookie.match(/JSESSIONID="?([^";]+)/)?.[1] || '',
+                'X-HTTP-Method-Override': 'PATCH',
+            },
+            credentials: 'include',
+            body: JSON.stringify({patch: {$set: {read: true}}}),
+        });
+        return {status: resp.status};
+        """
+        return self.driver.execute_script(
+            f"return (async () => {{ {script} }})()", url
+        )
+
     def get_invitations(self, start=0, limit=10) -> list:
         data = self._api_get(f"/relationships/invitationViews?start={start}&count={limit}")
         return data.get("elements", [])
@@ -400,6 +421,46 @@ class LinkedinClient:
         if message:
             payload["message"] = message
 
+        script = """
+        const resp = await fetch(arguments[0], {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-RestLi-Protocol-Version': '2.0.0',
+                'csrf-token': document.cookie.match(/JSESSIONID="?([^";]+)/)?.[1] || '',
+            },
+            credentials: 'include',
+            body: JSON.stringify(arguments[1]),
+        });
+        return {status: resp.status};
+        """
+        return self.driver.execute_script(
+            f"return (async () => {{ {script} }})()", url, payload
+        )
+
+    def remove_connection(self, public_profile_id: str):
+        """Remove a connection."""
+        url = f"{VOYAGER_API}/identity/profiles/{public_profile_id}/profileActions?action=disconnect"
+        script = """
+        const resp = await fetch(arguments[0], {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-RestLi-Protocol-Version': '2.0.0',
+                'csrf-token': document.cookie.match(/JSESSIONID="?([^";]+)/)?.[1] || '',
+            },
+            credentials: 'include',
+        });
+        return {status: resp.status};
+        """
+        return self.driver.execute_script(
+            f"return (async () => {{ {script} }})()", url
+        )
+
+    def reply_invitation(self, invitation_entity_urn: str, invitation_shared_secret: str, action: str = "accept"):
+        """Accept or reject an invitation."""
+        url = f"{VOYAGER_API}/relationships/invitations/{invitation_entity_urn}?action={action}"
+        payload = {"invitationSharedSecret": invitation_shared_secret}
         script = """
         const resp = await fetch(arguments[0], {
             method: 'POST',
@@ -437,8 +498,37 @@ class LinkedinClient:
         )
         return data.get("elements", [])
 
+    def follow_company(self, following_state_urn: str, following: bool = True):
+        """Follow or unfollow a company."""
+        url = f"{VOYAGER_API}/feed/follows"
+        payload = {"urn": following_state_urn, "following": following}
+        script = """
+        const resp = await fetch(arguments[0], {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-RestLi-Protocol-Version': '2.0.0',
+                'csrf-token': document.cookie.match(/JSESSIONID="?([^";]+)/)?.[1] || '',
+            },
+            credentials: 'include',
+            body: JSON.stringify(arguments[1]),
+        });
+        return {status: resp.status};
+        """
+        return self.driver.execute_script(
+            f"return (async () => {{ {script} }})()", url, payload
+        )
+
+    def unfollow_entity(self, urn_id: str):
+        """Unfollow an entity by URN."""
+        return self.follow_company(following_state_urn=urn_id, following=False)
+
     def get_job(self, job_id: str) -> dict:
         return self._api_get(f"/jobs/jobPostings/{job_id}")
+
+    def get_job_skills(self, job_id: str) -> dict:
+        """Get skills required for a job."""
+        return self._api_get(f"/jobs/jobPostings/{job_id}/skillMatchStatuses")
 
     def search_companies(self, keywords=None) -> list:
         kw = keywords[0] if isinstance(keywords, list) else (keywords or "")
