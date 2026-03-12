@@ -28,10 +28,11 @@ ZIP entpacken und aus dem Ordner ausführen — keine Installation, keine Depend
 linkedin-cli.exe login
 linkedin-cli.exe feed list -n 5
 
-# macOS / Linux
-chmod +x linkedin-cli
-./linkedin-cli login
-./linkedin-cli feed list -n 5
+# macOS / Linux — nach dem Entpacken einmalig:
+chmod +x linkedin-cli-macos  # oder linkedin-cli-linux
+find _internal -name "selenium-manager" -exec chmod +x {} +
+./linkedin-cli-macos login
+./linkedin-cli-macos feed list -n 5
 ```
 
 ### Python (pip)
