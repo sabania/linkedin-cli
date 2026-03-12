@@ -316,18 +316,22 @@ class LinkedinClient:
             f"/search/dash/clusters?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175"
             f"&origin=MEMBER_PROFILE_CANNED_SEARCH&q=all"
             f"&query=(flagshipSearchIntent:SEARCH_SRP,queryParameters:"
-            f"(network:List(F),connectionOf:List({urn_id})))"
+            f"(resultType:List(PEOPLE),network:List(F),connectionOf:List({urn_id})))"
         )
         results = []
         for cluster in data.get("elements", []):
             for item in cluster.get("items", []):
-                entity = item.get("item", {}).get("entityResult", {})
+                entity = (
+                    item.get("itemUnion", {}).get("entityResult")
+                    or item.get("item", {}).get("entityResult")
+                    or {}
+                )
                 if not entity:
                     continue
                 title = entity.get("title", {}).get("text", "")
                 subtitle = entity.get("primarySubtitle", {}).get("text", "")
                 nav_url = entity.get("navigationUrl", "")
-                public_id = nav_url.split("/in/")[-1].rstrip("/") if "/in/" in nav_url else ""
+                public_id = nav_url.split("/in/")[-1].split("?")[0].rstrip("/") if "/in/" in nav_url else ""
                 results.append({
                     "firstName": title.split(" ")[0] if title else "",
                     "lastName": " ".join(title.split(" ")[1:]) if title else "",
