@@ -35,16 +35,10 @@ curl -fsSL -o "$TMP/$ARCHIVE" "$URL"
 rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
 
-# Extract
+# Extract (--strip-components=1 removes the top-level directory from the archive)
 echo "Installing to $INSTALL_DIR..."
-tar -xzf "$TMP/$ARCHIVE" -C "$INSTALL_DIR"
+tar -xzf "$TMP/$ARCHIVE" -C "$INSTALL_DIR" --strip-components=1
 rm -rf "$TMP"
-
-# Flatten if nested in a subdirectory
-if [ -d "$INSTALL_DIR/$BIN_NAME" ]; then
-    mv "$INSTALL_DIR/$BIN_NAME"/* "$INSTALL_DIR/"
-    rmdir "$INSTALL_DIR/$BIN_NAME" 2>/dev/null || true
-fi
 
 # Fix permissions
 chmod +x "$INSTALL_DIR/$BIN_NAME"
