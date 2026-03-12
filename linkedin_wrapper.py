@@ -53,13 +53,24 @@ class LinkedinClient:
         identifier = public_id or urn_id
         if not identifier:
             return {}
+        # Base profile data (name, headline, summary, etc.)
         data = self._api_get(
             f"/identity/dash/profiles?q=memberIdentity&memberIdentity={identifier}"
         )
         elements = data.get("elements", [])
         if not elements:
             return {}
-        return _normalize_profile(elements[0])
+        raw = elements[0]
+        # Supplementary data (follower count, connection count)
+        sup = self._api_get(
+            f"/identity/dash/profiles?q=memberIdentity&memberIdentity={identifier}"
+            f"&decorationId=com.linkedin.voyager.dash.deco.identity.profile.TopCardSupplementary-126"
+        )
+        sup_elements = sup.get("elements", [])
+        if sup_elements:
+            raw["followingState"] = sup_elements[0].get("followingState")
+            raw["connections"] = sup_elements[0].get("connections")
+        return _normalize_profile(raw)
 
     def get_profile_contact_info(self, public_id=None, urn_id=None) -> dict:
         identifier = public_id or urn_id
@@ -93,8 +104,26 @@ class LinkedinClient:
         identifier = public_id or urn_id
         if not identifier:
             return []
-        data = self._api_get(f"/identity/profiles/{identifier}/skills")
-        return data.get("elements", [])
+        # Scrape skills from the profile skills section
+        self.driver.get(f"https://www.linkedin.com/in/{identifier}/details/skills/")
+        time.sleep(3)
+        script = """
+        var skills = [];
+        document.querySelectorAll('[data-field="skill_page_skill_topic"]').forEach(el => {
+            var name = el.querySelector('span[aria-hidden="true"]');
+            if (name) skills.push({name: name.innerText.trim()});
+        });
+        if (!skills.length) {
+            document.querySelectorAll('.artdeco-list__item').forEach(el => {
+                var span = el.querySelector('span[aria-hidden="true"]');
+                if (span && span.innerText.trim().length > 1) {
+                    skills.push({name: span.innerText.trim()});
+                }
+            });
+        }
+        return skills;
+        """
+        return self.driver.execute_script(script) or []
 
     def get_profile_posts(self, public_id=None, urn_id=None, post_count=10) -> list:
         """Get posts from a profile by scraping the activity page."""
@@ -303,6 +332,34 @@ class LinkedinClient:
 
         return reactions
 
+    def _extract_search_results(self, data: dict) -> list:
+        """Extract entity results from search cluster response."""
+        results = []
+        for cluster in data.get("elements", []):
+            for item in cluster.get("items", []):
+                entity = (
+                    item.get("itemUnion", {}).get("entityResult")
+                    or item.get("item", {}).get("entityResult")
+                    or {}
+                )
+                if not entity:
+                    continue
+                title = entity.get("title", {}).get("text", "")
+                subtitle = entity.get("primarySubtitle", {}).get("text", "")
+                secondary = entity.get("secondarySubtitle", {}).get("text", "") if entity.get("secondarySubtitle") else ""
+                nav_url = entity.get("navigationUrl", "")
+                urn = entity.get("entityUrn", "")
+                public_id = nav_url.split("/in/")[-1].split("?")[0].rstrip("/") if "/in/" in nav_url else ""
+                results.append({
+                    "name": title,
+                    "headline": subtitle,
+                    "location": secondary,
+                    "public_id": public_id,
+                    "urn_id": urn,
+                    "url": nav_url.split("?")[0] if nav_url else "",
+                })
+        return results
+
     def _resolve_public_ids(self, urns: list) -> dict:
         """Resolve a list of URN-based member IDs to public profile IDs in parallel."""
         script = """
@@ -363,9 +420,47 @@ class LinkedinClient:
         return results
 
     def get_profile_experiences(self, urn_id: str) -> list:
-        """Get work experiences of a profile."""
-        data = self._api_get(f"/identity/profiles/{urn_id}/positions")
-        return data.get("elements", [])
+        """Get work experiences of a profile by scraping the experience section."""
+        self.driver.get(f"https://www.linkedin.com/in/{urn_id}/details/experience/")
+        time.sleep(4)
+        for i in range(8):
+            self.driver.execute_script(f"window.scrollTo(0, {(i + 1) * 600})")
+            time.sleep(0.3)
+        time.sleep(1)
+        script = r'''
+        var exps = [];
+        var navItems = ['Start', 'Ihr Netzwerk', 'Jobs', 'Nachrichten',
+                        'Mitteilungen', 'Sie', 'Produkte', 'Marketing',
+                        'Home', 'My Network', 'Messaging', 'Notifications', 'Me'];
+        var lis = document.querySelectorAll('li');
+        for (var i = 0; i < lis.length; i++) {
+            var li = lis[i];
+            var text = li.innerText.trim();
+            if (text.indexOf('\n') === -1 || text.length < 15) continue;
+            var lines = text.split('\n').filter(function(l) {
+                return l.trim().length > 0;
+            }).map(function(l) { return l.trim(); });
+            if (navItems.indexOf(lines[0]) >= 0) continue;
+            if (lines.length < 2) continue;
+            var title = lines[0] || '';
+            var period = lines[1] || '';
+            var location = lines.length > 2 ? lines[2] : '';
+            // Get company from grandparent container
+            var company = '';
+            var gp = li.parentElement ? li.parentElement.parentElement : null;
+            if (gp) {
+                var gpLines = gp.innerText.trim().split('\n').filter(function(l) {
+                    return l.trim().length > 0;
+                }).map(function(l) { return l.trim(); });
+                if (gpLines.length > 0 && gpLines[0] !== title) {
+                    company = gpLines[0];
+                }
+            }
+            exps.push({title: title, companyName: company, timePeriod: period, location: location});
+        }
+        return exps;
+        '''
+        return self.driver.execute_script(script) or []
 
     def get_profile_network_info(self, public_profile_id: str) -> dict:
         """Get network info (follower count, connection count)."""
@@ -375,8 +470,34 @@ class LinkedinClient:
         return data
 
     def get_conversations(self) -> list:
-        data = self._api_get("/messaging/conversations")
-        return data.get("elements", [])
+        """Get conversations by scraping the messaging page."""
+        self.driver.get("https://www.linkedin.com/messaging/")
+        time.sleep(4)
+        script = r'''
+        var convos = [];
+        var items = document.querySelectorAll('.msg-conversation-listitem');
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            var text = item.innerText.trim();
+            var lines = text.split('\n').filter(function(l) { return l.trim().length > 0; }).map(function(l) { return l.trim(); });
+            var name = '';
+            var date = '';
+            var lastMessage = '';
+            for (var j = 0; j < lines.length; j++) {
+                var line = lines[j];
+                if (line.startsWith('Status:')) continue;
+                if (!name) { name = line; continue; }
+                if (!date && (line.match(/\d/) || line.indexOf('.') > 0)) { date = line; continue; }
+                if (date === line) continue;
+                if (!lastMessage && line.length > 5) { lastMessage = line; break; }
+            }
+            if (name) {
+                convos.push({participants: name, lastMessage: lastMessage, date: date});
+            }
+        }
+        return convos;
+        '''
+        return self.driver.execute_script(script) or []
 
     def get_conversation(self, conversation_urn_id: str) -> dict:
         data = self._api_get(f"/messaging/conversations/{conversation_urn_id}/events")
@@ -505,11 +626,14 @@ class LinkedinClient:
         )
 
     def search_people(self, keywords=None, limit=20, **kwargs) -> list:
-        params = f"count={limit}&origin=GLOBAL_SEARCH_HEADER"
-        if keywords:
-            params += f"&keywords={keywords}"
-        data = self._api_get(f"/graphql?variables=(start:0,origin:GLOBAL_SEARCH_HEADER,query:(keywords:{keywords or ''},flagshipSearchIntent:SEARCH_SRP))&queryId=voyagerSearchDashClusters.e18b87cfb0cb49b87a0e3f1ee11c29dc")
-        return data.get("elements", [])
+        kw = keywords or ""
+        data = self._api_get(
+            f"/search/dash/clusters?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175"
+            f"&origin=GLOBAL_SEARCH_HEADER&q=all&count={limit}"
+            f"&query=(keywords:{kw},flagshipSearchIntent:SEARCH_SRP"
+            f",queryParameters:(resultType:List(PEOPLE)))"
+        )
+        return self._extract_search_results(data)
 
     def get_company(self, public_id) -> dict:
         data = self._api_get(f"/organization/companies?q=universalName&universalName={public_id}")
@@ -550,7 +674,28 @@ class LinkedinClient:
         return self.follow_company(following_state_urn=urn_id, following=False)
 
     def get_job(self, job_id: str) -> dict:
-        return self._api_get(f"/jobs/jobPostings/{job_id}")
+        data = self._api_get(f"/jobs/jobPostings/{job_id}")
+        # Scrape company name from job page if not resolved
+        company_details = data.get("companyDetails", {})
+        if isinstance(company_details, dict):
+            inner = company_details.get("com.linkedin.voyager.jobs.JobPostingCompany", company_details)
+            if not inner.get("companyResolutionResult"):
+                try:
+                    self.driver.get(f"https://www.linkedin.com/jobs/view/{job_id}/")
+                    time.sleep(3)
+                    name = self.driver.execute_script(
+                        r'''var links = document.querySelectorAll('a[href*="/company/"]');
+                        for (var i = 0; i < links.length; i++) {
+                            var t = links[i].innerText.trim().split('\n')[0].trim();
+                            if (t) return t;
+                        }
+                        return '';'''
+                    )
+                    if name:
+                        inner["companyResolutionResult"] = {"name": name}
+                except Exception:
+                    pass
+        return data
 
     def get_job_skills(self, job_id: str) -> dict:
         """Get skills required for a job."""
@@ -561,28 +706,51 @@ class LinkedinClient:
         if not kw:
             return []
         data = self._api_get(
-            f"/voyagerSearchDashClusters?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175"
-            f"&origin=SWITCH_SEARCH_VERTICAL&q=all&query=(keywords:{kw},flagshipSearchIntent:SEARCH_SRP"
+            f"/search/dash/clusters?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175"
+            f"&origin=SWITCH_SEARCH_VERTICAL&q=all"
+            f"&query=(keywords:{kw},flagshipSearchIntent:SEARCH_SRP"
             f",queryParameters:(resultType:List(COMPANIES)))"
         )
-        results = []
-        for cluster in data.get("elements", []):
-            for item in cluster.get("items", []):
-                entity = item.get("item", {}).get("entityResult", {})
-                if not entity:
-                    continue
-                title = entity.get("title", {}).get("text", "")
-                subtitle = entity.get("primarySubtitle", {}).get("text", "")
-                urn = entity.get("entityUrn", "")
-                results.append({"name": title, "industry": subtitle, "urn_id": urn})
-        return results
+        return self._extract_search_results(data)
 
     def search_jobs(self, keywords=None, limit=20, **kwargs) -> list:
-        params = f"count={limit}&origin=JOB_SEARCH_RESULTS_PAGE"
-        if keywords:
-            params += f"&keywords={keywords}"
-        data = self._api_get(f"/voyagerJobsDashJobCards?{params}")
-        return data.get("elements", [])
+        """Search jobs by scraping the LinkedIn jobs search page."""
+        from urllib.parse import quote
+        kw = quote(keywords or "")
+        location = quote(kwargs.get("location_name", ""))
+        url = f"https://www.linkedin.com/jobs/search/?keywords={kw}"
+        if location:
+            url += f"&location={location}"
+        self.driver.get(url)
+        time.sleep(4)
+        # Scroll to load more results
+        for i in range(5):
+            self.driver.execute_script(f"window.scrollTo(0, {(i + 1) * 800})")
+            time.sleep(0.3)
+        time.sleep(1)
+        script = r'''
+        var results = [];
+        var seen = {};
+        var cards = document.querySelectorAll('[data-job-id], .job-card-container, .scaffold-layout__list-item');
+        for (var i = 0; i < cards.length; i++) {
+            var card = cards[i];
+            var jobId = card.getAttribute('data-job-id') || '';
+            if (!jobId || seen[jobId]) continue;
+            seen[jobId] = true;
+            var titleEl = card.querySelector('.job-card-list__title, .artdeco-entity-lockup__title, a[class*="job-card"]');
+            var companyEl = card.querySelector('.job-card-container__primary-description, .artdeco-entity-lockup__subtitle');
+            var locationEl = card.querySelector('.job-card-container__metadata-item, .artdeco-entity-lockup__caption');
+            results.push({
+                name: titleEl ? titleEl.innerText.trim().split('\n')[0] : '',
+                headline: companyEl ? companyEl.innerText.trim() : '',
+                location: locationEl ? locationEl.innerText.trim() : '',
+                urn_id: 'urn:li:jobPosting:' + jobId
+            });
+        }
+        return results;
+        '''
+        results = self.driver.execute_script(script) or []
+        return results[:limit]
 
     def quit(self):
         """Close the browser and clean up temp profile."""
@@ -614,14 +782,40 @@ def _normalize_profile(raw: dict) -> dict:
     if multi_headline:
         headline = next(iter(multi_headline.values()), "")
 
+    # Location from geoLocation or location fields
+    location = raw.get("geoLocationName", "")
+    if not location:
+        loc = raw.get("location", {})
+        geo = raw.get("geoLocation", {})
+        parts = [loc.get("city", ""), geo.get("postalCode", ""), loc.get("countryCode", "").upper()]
+        location = ", ".join(p for p in parts if p)
+
+    # Follower count from followingState (with TopCard decoration)
+    following_state = raw.get("followingState") or {}
+    follower_count = following_state.get("followerCount", "")
+
+    # Connection count from connections paging
+    connections = raw.get("connections") or {}
+    paging = connections.get("paging", {})
+    connection_count = paging.get("total", "")
+
+    # Summary from multiLocale or plain
+    summary = ""
+    multi_summary = raw.get("multiLocaleSummary", {})
+    if multi_summary:
+        summary = next(iter(multi_summary.values()), "")
+    if not summary:
+        summary = raw.get("summary", "")
+
     return {
         "firstName": first or raw.get("firstName", ""),
         "lastName": last or raw.get("lastName", ""),
         "headline": headline,
-        "locationName": raw.get("geoLocationName", ""),
+        "locationName": location,
         "industryName": raw.get("industryName", ""),
-        "summary": raw.get("summary", ""),
-        "followerCount": raw.get("followingState", {}).get("followerCount", ""),
+        "summary": summary,
+        "followerCount": follower_count,
+        "connectionCount": connection_count,
         "entityUrn": raw.get("entityUrn", ""),
         "objectUrn": raw.get("objectUrn", ""),
         "publicIdentifier": raw.get("publicIdentifier", ""),

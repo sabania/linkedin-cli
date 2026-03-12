@@ -29,6 +29,7 @@ def show(
     table.add_row("Industry", profile.get("industryName", ""))
     table.add_row("Summary", (profile.get("summary", "") or "")[:200])
     table.add_row("Followers", str(profile.get("followerCount", "")))
+    table.add_row("Connections", str(profile.get("connectionCount", "")))
 
     console.print(table)
 
@@ -75,16 +76,27 @@ def skills(
 
 @app.command()
 def experiences(
-    urn_id: str = typer.Argument(..., help="LinkedIn URN ID"),
+    username: str = typer.Argument(..., help="LinkedIn public profile ID or URN ID"),
 ):
     """List experiences of a profile."""
     from auth import get_client
     api = get_client()
-    result = api.get_profile_experiences(urn_id=urn_id)
+    result = api.get_profile_experiences(urn_id=username)
+
+    if not result:
+        console.print("[dim]No experiences found.[/dim]")
+        return
 
     for exp in result:
-        console.print(f"[bold]{exp.get('title', '')}[/bold] at {exp.get('companyName', '')}")
-        console.print(f"  {exp.get('timePeriod', {})}")
+        company = exp.get("companyName", "")
+        title = exp.get("title", "")
+        period = exp.get("timePeriod", "")
+        location = exp.get("location", "")
+        console.print(f"[bold]{title}[/bold] at [cyan]{company}[/cyan]")
+        if period:
+            console.print(f"  {period}")
+        if location:
+            console.print(f"  [dim]{location}[/dim]")
         console.print()
 
 
@@ -146,7 +158,36 @@ def views():
     from auth import get_client
     api = get_client()
     result = api.get_current_profile_views()
-    console.print_json(data=result)
+
+    table = Table(title="Profile Views")
+    table.add_column("Name", style="green")
+    table.add_column("Headline")
+    table.add_column("Viewed At", style="dim")
+
+    for card in result:
+        value = card.get("value", {})
+        inner = value.get("com.linkedin.voyager.identity.me.wvmpOverview.WvmpViewersCard", {})
+        for insight in inner.get("insightCards", []):
+            summary = insight.get("value", {}).get("com.linkedin.voyager.identity.me.wvmpOverview.WvmpSummaryInsightCard", {})
+            for c in summary.get("cards", []):
+                viewer_data = c.get("value", {}).get("com.linkedin.voyager.identity.me.WvmpProfileViewCard", {})
+                viewer = viewer_data.get("viewer", {})
+                full = viewer.get("com.linkedin.voyager.identity.me.FullProfileViewer", {})
+                mini = full.get("profile", {}).get("miniProfile", {})
+                if not mini:
+                    continue
+                name = f"{mini.get('firstName', '')} {mini.get('lastName', '')}"
+                headline = mini.get("occupation", "")
+                viewed_at = viewer_data.get("viewedAt", "")
+                if viewed_at:
+                    from datetime import datetime
+                    try:
+                        viewed_at = datetime.fromtimestamp(viewed_at / 1000).strftime("%Y-%m-%d %H:%M")
+                    except Exception:
+                        pass
+                table.add_row(name, headline[:60], str(viewed_at))
+
+    console.print(table)
 
 
 @app.command()
@@ -156,8 +197,16 @@ def network(
     """Show network info for a profile."""
     from auth import get_client
     api = get_client()
-    result = api.get_profile_network_info(public_profile_id=username)
-    console.print_json(data=result)
+    profile = api.get_profile(public_id=username)
+
+    table = Table(title=f"Network: {username}")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", style="green")
+
+    table.add_row("Followers", str(profile.get("followerCount", "")))
+    table.add_row("Connections", str(profile.get("connectionCount", "")))
+
+    console.print(table)
 
 
 @app.command()

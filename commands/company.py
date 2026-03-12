@@ -21,10 +21,19 @@ def show(
     table.add_column("Field", style="cyan")
     table.add_column("Value", style="green")
 
+    industries = company.get("companyIndustries", [])
+    industry_str = ", ".join(i.get("localizedName", "") for i in industries if isinstance(i, dict)) if industries else ""
+    hq = company.get("headquarter", {})
+    if isinstance(hq, dict):
+        hq_parts = [hq.get("line1", ""), hq.get("city", ""), hq.get("geographicArea", ""), hq.get("postalCode", ""), hq.get("country", "")]
+        hq_str = ", ".join(p for p in hq_parts if p)
+    else:
+        hq_str = str(hq)
+
     table.add_row("Name", company.get("name", ""))
-    table.add_row("Industry", str(company.get("companyIndustries", [])))
+    table.add_row("Industry", industry_str)
     table.add_row("Size", str(company.get("staffCount", "")))
-    table.add_row("HQ", str(company.get("headquarter", "")))
+    table.add_row("HQ", hq_str)
     table.add_row("Description", (company.get("description", "") or "")[:300])
     table.add_row("Website", company.get("callToAction", {}).get("url", ""))
 

@@ -47,7 +47,7 @@ def people(
     for person in results:
         table.add_row(
             person.get("name", ""),
-            (person.get("jobtitle", "") or "")[:50],
+            (person.get("headline", "") or "")[:50],
             person.get("location", ""),
             person.get("public_id", ""),
         )
@@ -70,10 +70,12 @@ def companies(
     table.add_column("ID", style="dim")
 
     for c in results:
+        url = c.get("url", "")
+        slug = url.rstrip("/").rsplit("/", 1)[-1] if url else ""
         table.add_row(
             c.get("name", ""),
-            c.get("industry", ""),
-            c.get("urn_id", ""),
+            c.get("headline", ""),
+            slug,
         )
 
     console.print(table)
@@ -114,10 +116,10 @@ def jobs(
 
     for job in results:
         table.add_row(
-            job.get("title", ""),
-            job.get("companyName", ""),
+            job.get("name", ""),
+            job.get("headline", ""),
             job.get("location", ""),
-            job.get("dashEntityUrn", "").split(":")[-1] if job.get("dashEntityUrn") else "",
+            job.get("urn_id", "").split(":")[-1] if job.get("urn_id") else "",
         )
 
     console.print(table)

@@ -18,18 +18,14 @@ def list_conversations():
     table = Table(title="Conversations")
     table.add_column("Participants", style="green")
     table.add_column("Last Message")
-    table.add_column("URN", style="dim")
+    table.add_column("Date", style="dim")
 
     for convo in convos:
-        participants = convo.get("participants", [])
-        names = ", ".join(
-            f"{p.get('firstName', '')} {p.get('lastName', '')}"
-            for p in participants[:3]
-        )
-        last_msg = convo.get("lastMessage", {})
-        text = last_msg.get("text", "")[:80] if isinstance(last_msg, dict) else ""
+        name = convo.get("participants", "")
+        last_msg = convo.get("lastMessage", "")[:80] if isinstance(convo.get("lastMessage"), str) else ""
+        date = convo.get("date", "")
 
-        table.add_row(names, text, convo.get("entityUrn", ""))
+        table.add_row(name, last_msg, date)
 
     console.print(table)
 
