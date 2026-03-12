@@ -305,6 +305,49 @@ class LinkedinClient:
         ) or []
         return {r["urn"]: r["publicId"] for r in resolved}
 
+    def get_current_profile_views(self) -> list:
+        """Get list of people who viewed your profile."""
+        data = self._api_get("/identity/wvmpCards")
+        return data.get("elements", [])
+
+    def get_profile_connections(self, urn_id: str) -> list:
+        """Get connections of a profile."""
+        data = self._api_get(
+            f"/search/dash/clusters?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175"
+            f"&origin=MEMBER_PROFILE_CANNED_SEARCH&q=all"
+            f"&query=(flagshipSearchIntent:SEARCH_SRP,queryParameters:"
+            f"(network:List(F),connectionOf:List({urn_id})))"
+        )
+        results = []
+        for cluster in data.get("elements", []):
+            for item in cluster.get("items", []):
+                entity = item.get("item", {}).get("entityResult", {})
+                if not entity:
+                    continue
+                title = entity.get("title", {}).get("text", "")
+                subtitle = entity.get("primarySubtitle", {}).get("text", "")
+                nav_url = entity.get("navigationUrl", "")
+                public_id = nav_url.split("/in/")[-1].rstrip("/") if "/in/" in nav_url else ""
+                results.append({
+                    "firstName": title.split(" ")[0] if title else "",
+                    "lastName": " ".join(title.split(" ")[1:]) if title else "",
+                    "headline": subtitle,
+                    "public_id": public_id,
+                })
+        return results
+
+    def get_profile_experiences(self, urn_id: str) -> list:
+        """Get work experiences of a profile."""
+        data = self._api_get(f"/identity/profiles/{urn_id}/positions")
+        return data.get("elements", [])
+
+    def get_profile_network_info(self, public_profile_id: str) -> dict:
+        """Get network info (follower count, connection count)."""
+        data = self._api_get(
+            f"/identity/profiles/{public_profile_id}/networkinfo"
+        )
+        return data
+
     def get_conversations(self) -> list:
         data = self._api_get("/messaging/conversations")
         return data.get("elements", [])
