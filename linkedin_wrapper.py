@@ -65,7 +65,29 @@ class LinkedinClient:
         identifier = public_id or urn_id
         if not identifier:
             return {}
-        return self._api_get(f"/identity/profiles/{identifier}/profileContactInfo")
+        # Use dash profile which has the actual contact fields
+        data = self._api_get(
+            f"/identity/dash/profiles?q=memberIdentity&memberIdentity={identifier}"
+        )
+        elements = data.get("elements", [])
+        if not elements:
+            return {}
+        p = elements[0]
+        email_obj = p.get("emailAddress", {})
+        website_obj = p.get("creatorWebsite", {})
+        website_url = ""
+        if website_obj:
+            for attr in website_obj.get("attributesV2", []):
+                href = attr.get("detailDataUnion", {}).get("hyperlink", "")
+                if href:
+                    website_url = href
+                    break
+        return {
+            "email_address": email_obj.get("emailAddress", "") if isinstance(email_obj, dict) else "",
+            "phone_numbers": [],
+            "twitter": p.get("twitterHandles", []),
+            "websites": [website_url] if website_url else [],
+        }
 
     def get_profile_skills(self, public_id=None, urn_id=None) -> list:
         identifier = public_id or urn_id
