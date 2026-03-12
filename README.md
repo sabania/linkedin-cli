@@ -11,9 +11,23 @@ Uses Selenium with a real Chrome browser under the hood, so LinkedIn's bot detec
 
 ## Installation
 
-### Binary (kein Python nötig)
+### Quick Install (empfohlen)
 
-Download ZIP für dein OS von [Releases](../../releases):
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/sabania/linkedin-cli/main/install.ps1 | iex
+```
+
+**macOS / Linux:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/sabania/linkedin-cli/main/install.sh | bash
+```
+
+Installiert nach `~/.local/share/linkedin-cli` (Unix) bzw. `%LOCALAPPDATA%\linkedin-cli` (Windows) und fügt es automatisch zum PATH hinzu. Danach Terminal neu starten.
+
+### Manual Install
+
+Download ZIP von [Releases](../../releases), entpacken und Verzeichnis manuell zum PATH hinzufügen:
 
 | OS | Datei |
 |----|-------|
@@ -21,36 +35,27 @@ Download ZIP für dein OS von [Releases](../../releases):
 | macOS | `linkedin-cli-macos.zip` |
 | Linux | `linkedin-cli-linux.zip` |
 
-ZIP entpacken und aus dem Ordner ausführen — keine Installation, keine Dependencies, nur Chrome:
-
-```bash
-# Windows
-linkedin-cli.exe login
-linkedin-cli.exe feed list -n 5
-
-# macOS / Linux — nach dem Entpacken einmalig:
-chmod +x linkedin-cli-macos  # oder linkedin-cli-linux
-find _internal -name "selenium-manager" -exec chmod +x {} +
-./linkedin-cli-macos login
-./linkedin-cli-macos feed list -n 5
-```
-
-### Python (pip)
-
-Erfordert Python 3.12+:
-
-```bash
-pip install linkedin-cli
-linkedin-cli login
-```
-
 ### From Source (Entwickler)
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/sabania/linkedin-cli.git
 cd linkedin-cli
 pip install -r requirements.txt
 python main.py login
+```
+
+### Uninstall
+
+```powershell
+# Windows
+irm https://raw.githubusercontent.com/sabania/linkedin-cli/main/install.ps1 | iex -Uninstall
+# oder manuell: Ordner %LOCALAPPDATA%\linkedin-cli löschen
+```
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/sabania/linkedin-cli/main/install.sh | bash -s -- --uninstall
+# oder manuell: rm -rf ~/.local/share/linkedin-cli ~/.local/bin/linkedin-cli
 ```
 
 ## Quick Start
