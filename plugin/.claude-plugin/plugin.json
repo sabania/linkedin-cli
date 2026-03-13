@@ -1,0 +1,10 @@
+{
+  "name": "linkedin-commander",
+  "description": "Selbstlernendes LinkedIn-Marketing-System. 9 AI Agents als Marketing-Team: Content-Strategie, Post-Analyse, Lead-Generierung, Competitor-Tracking. Delta-basierte Pipeline mit Human-in-the-Loop.",
+  "version": "3.0.0",
+  "author": {
+    "name": "Arben Sabani"
+  },
+  "repository": "https://github.com/asabani/linkedin-cli",
+  "license": "MIT"
+}
