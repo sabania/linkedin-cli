@@ -244,6 +244,102 @@ class TestCompanyShow:
 
 
 # ──────────────────────────────────────────────
+# company updates
+# ──────────────────────────────────────────────
+
+class TestCompanyUpdates:
+    def test_company_updates_exits_ok(self, cli_app):
+        result = runner.invoke(cli_app, ["company", "updates", "microsoft", "-n", "2"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+
+
+# ──────────────────────────────────────────────
+# search posts
+# ──────────────────────────────────────────────
+
+class TestSearchPosts:
+    def test_search_posts_exits_ok(self, cli_app):
+        result = runner.invoke(cli_app, ["search", "posts", "AI", "--limit", "3"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+
+    def test_search_posts_shows_table(self, cli_app):
+        result = runner.invoke(cli_app, ["search", "posts", "python", "--limit", "3"])
+        assert "Post Search" in result.output
+
+
+# ──────────────────────────────────────────────
+# search groups
+# ──────────────────────────────────────────────
+
+class TestSearchGroups:
+    def test_search_groups_exits_ok(self, cli_app):
+        result = runner.invoke(cli_app, ["search", "groups", "python", "--limit", "3"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+
+    def test_search_groups_shows_table(self, cli_app):
+        result = runner.invoke(cli_app, ["search", "groups", "data science", "--limit", "3"])
+        assert "Group Search" in result.output
+
+
+# ──────────────────────────────────────────────
+# search events
+# ──────────────────────────────────────────────
+
+class TestSearchEvents:
+    def test_search_events_exits_ok(self, cli_app):
+        result = runner.invoke(cli_app, ["search", "events", "AI", "--limit", "3"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+
+    def test_search_events_shows_table(self, cli_app):
+        result = runner.invoke(cli_app, ["search", "events", "technology", "--limit", "3"])
+        assert "Event Search" in result.output
+
+
+# ──────────────────────────────────────────────
+# notifications list
+# ──────────────────────────────────────────────
+
+class TestNotificationsList:
+    def test_notifications_list_exits_ok(self, cli_app):
+        result = runner.invoke(cli_app, ["notifications", "list", "-n", "3"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+
+    def test_notifications_list_shows_table(self, cli_app):
+        result = runner.invoke(cli_app, ["notifications", "list", "-n", "3"])
+        assert "Notifications" in result.output or "No notifications" in result.output
+
+
+# ──────────────────────────────────────────────
+# posts show
+# ──────────────────────────────────────────────
+
+class TestPostsShow:
+    def test_posts_show_exits_ok(self, cli_app, first_post_activity_id):
+        if not first_post_activity_id:
+            pytest.skip("No posts found")
+        result = runner.invoke(cli_app, ["posts", "show", first_post_activity_id])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+
+    def test_posts_show_has_metrics(self, cli_app, first_post_activity_id):
+        if not first_post_activity_id:
+            pytest.skip("No posts found")
+        result = runner.invoke(cli_app, ["posts", "show", first_post_activity_id])
+        assert "Metrics" in result.output or "Post not found" in result.output
+
+
+# ──────────────────────────────────────────────
+# posts analytics
+# ──────────────────────────────────────────────
+
+class TestPostsAnalytics:
+    def test_posts_analytics_exits_ok(self, cli_app, first_post_activity_id):
+        if not first_post_activity_id:
+            pytest.skip("No posts found")
+        result = runner.invoke(cli_app, ["posts", "analytics", first_post_activity_id])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+
+
+# ──────────────────────────────────────────────
 # help commands (no auth needed)
 # ──────────────────────────────────────────────
 
@@ -283,4 +379,8 @@ class TestHelp:
 
     def test_company_help(self, cli_app):
         result = runner.invoke(cli_app, ["company", "--help"])
+        assert result.exit_code == 0
+
+    def test_notifications_help(self, cli_app):
+        result = runner.invoke(cli_app, ["notifications", "--help"])
         assert result.exit_code == 0

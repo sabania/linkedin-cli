@@ -22,6 +22,28 @@ class LinkedinClient:
         self.driver = driver
         self._me_cache = None
 
+    def _dismiss_modal(self):
+        """Dismiss any cookie consent banner or overlay modal."""
+        self.driver.execute_script(r'''
+        // Cookie consent banner (artdeco-global-alert)
+        var cookie = document.querySelector('.artdeco-global-alert--cookie_consent');
+        if (cookie) {
+            var btns = cookie.querySelectorAll('button');
+            for (var i = 0; i < btns.length; i++) {
+                var t = btns[i].innerText.toLowerCase();
+                if (t.indexOf('akzeptier') >= 0 || t.indexOf('accept') >= 0 || t.indexOf('agree') >= 0) {
+                    btns[i].click(); return;
+                }
+            }
+        }
+        // Standard modal dialog
+        var modal = document.querySelector('.artdeco-modal:not(.vjs-modal-dialog)');
+        if (modal) {
+            var close = modal.querySelector('.artdeco-modal__dismiss');
+            if (close) close.click();
+        }
+        ''')
+
     def _api_get(self, endpoint: str) -> dict:
         """Execute a Voyager API GET request via the browser."""
         url = f"{VOYAGER_API}{endpoint}"
@@ -137,108 +159,217 @@ class LinkedinClient:
         return self.driver.execute_script(script) or []
 
     def get_profile_posts(self, public_id=None, urn_id=None, limit=25, post_count=None) -> list:
-        """Get posts from a profile by scraping the activity page."""
+        """Get posts from a profile via GraphQL API with pagination."""
+        import re as _re
         limit = post_count or limit
         identifier = public_id or urn_id
         if not identifier:
             return []
 
+        # Load activity page to capture the GraphQL queryId
         self.driver.get(f"https://www.linkedin.com/in/{identifier}/recent-activity/all/")
         time.sleep(4)
 
-        # Scroll to load more posts
-        scroll_count = min(max(3, limit // 4), 20)
-        for _ in range(scroll_count):
-            self.driver.execute_script("window.scrollBy(0, 1000)")
-            time.sleep(0.7)
+        urls = self.driver.execute_script(r'''
+        var entries = performance.getEntriesByType("resource");
+        for (var i = 0; i < entries.length; i++) {
+            if (entries[i].name.indexOf("ProfileUpdates") >= 0) return entries[i].name;
+        }
+        return null;
+        ''')
+        if not urls:
+            return []
 
-        script = (
-            "var posts = [];"
-            "var els = document.querySelectorAll('[data-urn]');"
-            "els.forEach(function(el) {"
-            "  var urn = el.getAttribute('data-urn');"
-            "  if (!urn || urn.indexOf('activity') === -1) return;"
-            "  var text = '';"
-            "  var spans = el.querySelectorAll('span[dir]');"
-            "  for (var i = 0; i < spans.length; i++) {"
-            "    var t = spans[i].innerText || '';"
-            "    if (t.length > text.length && t.length > 20) text = t;"
-            "  }"
-            "  var rxBtn = el.querySelector('button[data-reaction-details]');"
-            "  var rxText = rxBtn ? rxBtn.innerText.trim() : '';"
-            "  var rxMatch = rxText.match(/(\\d[\\d.,]*)/);"
-            "  var rxCount = rxMatch ? rxMatch[1] : (rxBtn ? '1' : '0');"
-            "  var cmLi = el.querySelector('li.social-details-social-counts__comments');"
-            "  var cmBtn = cmLi ? cmLi.querySelector('button') : null;"
-            "  var cmText = cmBtn ? cmBtn.innerText.trim() : '';"
-            "  var cmMatch = cmText.match(/(\\d[\\d.,]*)/);"
-            "  var cmCount = cmMatch ? cmMatch[1] : '0';"
-            "  posts.push({urn: urn, text: text.substring(0, 500), reactions: rxCount, comments: cmCount});"
-            "});"
-            "return posts;"
-        )
-        posts = self.driver.execute_script(script) or []
-        return posts[:limit]
+        qid_match = _re.search(r'queryId=([^&]+)', urls)
+        profile_urn_match = _re.search(r'profileUrn:([^)]+)', urls)
+        if not qid_match or not profile_urn_match:
+            return []
+
+        query_id = qid_match.group(1)
+        profile_urn = profile_urn_match.group(1)
+
+        all_posts = []
+        page_size = 20
+        start = 0
+
+        while start < limit:
+            count = min(page_size, limit - start)
+            data = self._api_get(
+                f"/graphql?variables=(count:{count},start:{start},profileUrn:{profile_urn})&queryId={query_id}"
+            )
+            feed = (data or {}).get("data", {})
+            # Find the key containing elements
+            elements = []
+            for k, v in feed.items():
+                if isinstance(v, dict) and "elements" in v:
+                    elements = v["elements"]
+                    break
+            if not elements:
+                break
+
+            for el in elements:
+                entity_urn = el.get("entityUrn", "")
+                activity_match = _re.search(r'urn:li:activity:\d+', entity_urn)
+                urn = activity_match.group(0) if activity_match else entity_urn
+
+                commentary = el.get("commentary") or {}
+                text_obj = commentary.get("text") or {}
+                text = text_obj.get("text", "") if isinstance(text_obj, dict) else ""
+
+                social = el.get("socialDetail") or {}
+                counts = social.get("totalSocialActivityCounts") or {}
+
+                all_posts.append({
+                    "urn": urn,
+                    "text": text[:500],
+                    "reactions": str(counts.get("numLikes", 0)),
+                    "comments": str(counts.get("numComments", 0)),
+                })
+
+            start += len(elements)
+            if len(elements) < count:
+                break
+
+        return all_posts[:limit]
 
     def get_feed_posts(self, limit=25, exclude_promoted_posts=True) -> list:
-        """Get feed posts by scraping the rendered feed page."""
+        """Get feed posts via GraphQL API with pagination."""
+        # Load feed page to capture the GraphQL queryId
         self.driver.get("https://www.linkedin.com/feed/")
-        time.sleep(3)
+        time.sleep(4)
 
-        # Scroll to load more posts
-        scroll_count = min(max(3, limit // 4), 20)
-        for _ in range(scroll_count):
-            self.driver.execute_script("window.scrollBy(0, 1000)")
-            time.sleep(1)
+        import re
+        feed_url = self.driver.execute_script(r'''
+        var entries = performance.getEntriesByType("resource");
+        for (var i = 0; i < entries.length; i++) {
+            if (entries[i].name.indexOf("MainFeed") >= 0) return entries[i].name;
+        }
+        return null;
+        ''')
+        if not feed_url:
+            return []
 
-        # Extract posts from DOM
-        script = """
-        const posts = [];
-        document.querySelectorAll('[data-urn]').forEach(el => {
-            const urn = el.getAttribute('data-urn');
-            if (!urn || !urn.includes('activity')) return;
+        qid_match = re.search(r'queryId=([^&]+)', feed_url)
+        if not qid_match:
+            return []
+        query_id = qid_match.group(1)
 
-            // Find post text - longest span with dir=ltr that's not the author name
-            let text = '';
-            el.querySelectorAll('span[dir="ltr"], .break-words span').forEach(span => {
-                const t = span.innerText || '';
-                if (t.length > text.length && t.length > 30) text = t;
-            });
+        all_posts = []
+        page_size = 25
+        start = 0
 
-            // Author: first short span in actor area
-            const authorEl = el.querySelector('.update-components-actor__name span span, .feed-shared-actor__name span');
-            const author = authorEl ? authorEl.innerText.trim().split('\\n')[0] : '';
+        while start < limit:
+            count = min(page_size, limit - start)
+            data = self._api_get(
+                f"/graphql?variables=(start:{start},count:{count},sortOrder:RELEVANCE)&queryId={query_id}"
+            )
+            feed = (data or {}).get("data", {}).get("feedDashMainFeedByMainFeed", {})
+            elements = feed.get("elements", [])
+            if not elements:
+                break
 
-            // Reactions count - from button innerText (first number)
-            const rxBtn = el.querySelector('button[data-reaction-details]');
-            const rxText = rxBtn ? rxBtn.innerText.trim() : '';
-            const rxMatch = rxText.match(/(\\d[\\d.,]*)/);
-            const reactions = rxMatch ? rxMatch[1] : (rxBtn ? '1' : '0');
+            for el in elements:
+                # Extract activity URN
+                entity_urn = el.get("entityUrn", "")
+                activity_match = re.search(r'urn:li:activity:\d+', entity_urn)
+                urn = activity_match.group(0) if activity_match else entity_urn
 
-            // Comments count - from the comments list item button
-            const cmLi = el.querySelector('li.social-details-social-counts__comments');
-            const cmBtn = cmLi ? cmLi.querySelector('button') : null;
-            const cmText = cmBtn ? cmBtn.innerText.trim() : '';
-            const cmMatch = cmText.match(/(\\d[\\d.,]*)/);
-            const comments = cmMatch ? cmMatch[1] : '0';
+                # Text
+                commentary = el.get("commentary") or {}
+                text_obj = commentary.get("text") or {}
+                text = text_obj.get("text", "") if isinstance(text_obj, dict) else ""
 
-            posts.push({
-                urn: urn,
-                text: text.substring(0, 500),
-                author: author,
-                reactions: reactions,
-                comments: comments,
-            });
-        });
-        return posts;
-        """
-        posts = self.driver.execute_script(script) or []
-        return posts[:limit]
+                # Author
+                actor = el.get("actor") or {}
+                name_obj = actor.get("name") or {}
+                author = name_obj.get("text", "") if isinstance(name_obj, dict) else str(name_obj)
+
+                # Social counts
+                social = el.get("socialDetail") or {}
+                counts = social.get("totalSocialActivityCounts") or {}
+                reactions = str(counts.get("numLikes", 0))
+                comments = str(counts.get("numComments", 0))
+
+                all_posts.append({
+                    "urn": urn,
+                    "text": text[:500],
+                    "author": author,
+                    "reactions": reactions,
+                    "comments": comments,
+                })
+
+            start += len(elements)
+            if len(elements) < count:
+                break
+
+        return all_posts[:limit]
+
+    def _get_post_analytics_list(self, activity_id: str, result_type: str, limit: int) -> list:
+        """Get reactions/comments/reposts via the analytics GraphQL API with pagination."""
+        # Load analytics page to capture queryId
+        self.driver.get(
+            f"https://www.linkedin.com/analytics/post/urn:li:activity:{activity_id}/?resultType={result_type}"
+        )
+        time.sleep(4)
+
+        import re as _re
+        qid_url = self.driver.execute_script(r'''
+        var entries = performance.getEntriesByType("resource");
+        for (var i = 0; i < entries.length; i++) {
+            if (entries[i].name.indexOf("AnalyticsObject") >= 0) return entries[i].name;
+        }
+        return null;
+        ''')
+
+        if not qid_url:
+            return []
+        qid = _re.search(r'queryId=([^&]+)', qid_url).group(1)
+        act_urn = f"urn%3Ali%3Aactivity%3A{activity_id}"
+
+        all_items = []
+        page_size = 10
+        start = 0
+
+        while start < limit:
+            data = self._api_get(
+                f"/graphql?variables=(start:{start},"
+                f"query:(selectedFilters:List((key:resultType,value:List({result_type})))),"
+                f"analyticsEntityUrn:(activityUrn:{act_urn}),surfaceType:POST)"
+                f"&queryId={qid}"
+            )
+            feed = (data or {}).get("data", {})
+            elements = []
+            for k, v in feed.items():
+                if isinstance(v, dict) and "elements" in v:
+                    elements = v["elements"]
+                    break
+            if not elements:
+                break
+
+            for el in elements:
+                entity = (el.get("content") or {}).get("analyticsEntityLockup", {}).get("entityLockup", {})
+                title = entity.get("title") or {}
+                subtitle = entity.get("subtitle") or {}
+                nav_url = entity.get("navigationUrl", "")
+                # Extract public ID from URL
+                pid = nav_url.split("/in/")[-1].rstrip("/") if "/in/" in nav_url else ""
+
+                all_items.append({
+                    "name": title.get("text", ""),
+                    "headline": (subtitle.get("text", "") or "")[:100],
+                    "profileId": pid,
+                    "profileUrl": nav_url,
+                })
+
+            start += len(elements)
+            if len(elements) < page_size:
+                break
+
+        return all_items[:limit]
 
     def get_post_comments(self, post_urn: str, limit=50, comment_count=None) -> list:
-        """Get comments on a post by loading the post page."""
+        """Get comments on a post by loading the post page (scraping — analytics API has no comment text)."""
         limit = comment_count or limit
-        # Extract activity ID from URN
         activity_id = post_urn.split(":")[-1]
         self.driver.get(f"https://www.linkedin.com/feed/update/urn:li:activity:{activity_id}/")
         time.sleep(4)
@@ -284,7 +415,6 @@ class LinkedinClient:
             "return comments;"
         )
         comments = self.driver.execute_script(script) or []
-        # Filter out empty/duplicate entries
         seen = set()
         unique = []
         for c in comments:
@@ -292,79 +422,13 @@ class LinkedinClient:
             if key and key not in seen:
                 seen.add(key)
                 unique.append(c)
-        unique = unique[:limit]
-
-        # Resolve URN-based profile IDs to public identifiers
-        urns = [c["profileId"] for c in unique if c.get("profileId")]
-        if urns:
-            resolved = self._resolve_public_ids(urns)
-            for c in unique:
-                c["profileId"] = resolved.get(c.get("profileId", ""), c.get("profileId", ""))
-                if c["profileId"] and not c["profileUrl"].endswith(c["profileId"]):
-                    c["profileUrl"] = f"https://www.linkedin.com/in/{c['profileId']}"
-
-        return unique
+        return unique[:limit]
 
     def get_post_reactions(self, post_urn: str, limit=50, max_results=None) -> list:
-        """Get reactions on a post by clicking the reactions count."""
-        activity_id = post_urn.split(":")[-1]
-        self.driver.get(f"https://www.linkedin.com/feed/update/urn:li:activity:{activity_id}/")
-        time.sleep(3)
-
-        # Click reactions button to open modal (language-independent selector)
-        self.driver.execute_script(
-            "var btn = document.querySelector('button[data-reaction-details]');"
-            "if (btn) btn.click();"
-        )
-        time.sleep(3)
-
-        # Scroll inside modal to load more (gentle scrolling to avoid tab crash)
+        """Get reactors on a post via analytics API."""
         count = max_results or limit
-        for _ in range(min(max(3, count // 10), 8)):
-            try:
-                self.driver.execute_script(
-                    "var modal = document.querySelector('.artdeco-modal__content, [role=\"dialog\"] .overflow-y-auto');"
-                    "if (modal) modal.scrollTop = modal.scrollHeight;"
-                )
-                time.sleep(1.5)
-            except Exception:
-                break
-
-        script = (
-            "var reactions = [];"
-            "var els = document.querySelectorAll('.social-details-reactors-tab-body-list-item, [class*=\"reactors\"] li');"
-            "els.forEach(function(el) {"
-            "  var link = el.querySelector('a[href*=\"/in/\"]');"
-            "  var lockup = el.querySelector('.artdeco-entity-lockup, [class*=\"entity-lockup\"]');"
-            "  var titleEl = lockup ? lockup.querySelector('.artdeco-entity-lockup__title, [class*=\"lockup__title\"]') : null;"
-            "  var subtitleEl = lockup ? lockup.querySelector('.artdeco-entity-lockup__subtitle, .artdeco-entity-lockup__caption, [class*=\"lockup__subtitle\"], p') : null;"
-            "  var name = titleEl ? titleEl.innerText.trim().split('\\n')[0] : '';"
-            "  if (!name && link) name = link.innerText.trim().split('\\n')[0];"
-            "  reactions.push({"
-            "    name: name,"
-            "    profileUrl: link ? link.getAttribute('href') : '',"
-            "    profileId: link ? link.getAttribute('href').split('/in/')[1].replace('/','') : '',"
-            "    headline: subtitleEl ? subtitleEl.innerText.trim().substring(0, 100) : ''"
-            "  });"
-            "});"
-            "return reactions;"
-        )
-        try:
-            reactions = self.driver.execute_script(script) or []
-        except Exception:
-            reactions = []
-        reactions = reactions[:count]
-
-        # Resolve URN-based profile IDs to public identifiers (parallel)
-        urns = [r["profileId"] for r in reactions if r.get("profileId")]
-        if urns:
-            resolved = self._resolve_public_ids(urns)
-            for r in reactions:
-                r["profileId"] = resolved.get(r.get("profileId", ""), r.get("profileId", ""))
-                if r["profileId"] and not r["profileUrl"].endswith(r["profileId"]):
-                    r["profileUrl"] = f"https://www.linkedin.com/in/{r['profileId']}"
-
-        return reactions
+        activity_id = post_urn.split(":")[-1]
+        return self._get_post_analytics_list(activity_id, "REACTIONS", count)
 
     def _extract_search_results(self, data: dict) -> list:
         """Extract entity results from search cluster response."""
@@ -564,101 +628,163 @@ class LinkedinClient:
         )
         return data
 
+    def _get_messaging_query_ids(self) -> dict:
+        """Capture messaging GraphQL queryIds and mailboxUrn from the messaging page."""
+        import re as _re
+        urls = self.driver.execute_script(r'''
+        var entries = performance.getEntriesByType("resource");
+        var result = {};
+        for (var i = 0; i < entries.length; i++) {
+            var u = entries[i].name;
+            var qid = u.match(/queryId=([^&]+)/);
+            if (!qid) continue;
+            if (u.indexOf("messengerConversations") >= 0) {
+                result.conversations = qid[1];
+                var mb = u.match(/mailboxUrn:([^)&]+)/);
+                if (mb) result.mailboxUrn = decodeURIComponent(mb[1]);
+            }
+            if (u.indexOf("messengerMessages") >= 0) result.messages = qid[1];
+        }
+        return result;
+        ''') or {}
+        return urls
+
     def get_conversations(self, limit=25) -> list:
-        """Get conversations by scraping the messaging page."""
+        """Get conversations via GraphQL messaging API."""
         self.driver.get("https://www.linkedin.com/messaging/")
         time.sleep(4)
-        # Scroll conversation list to load more
-        scroll_count = min(max(3, limit // 5), 15)
-        for _ in range(scroll_count):
-            try:
-                self.driver.execute_script(
-                    "var list = document.querySelector('.msg-conversations-container__conversations-list');"
-                    "if (list) list.scrollTop = list.scrollHeight;"
-                )
-                time.sleep(1)
-            except Exception:
+
+        qids = self._get_messaging_query_ids()
+        conv_qid = qids.get("conversations")
+        my_urn = qids.get("mailboxUrn", "")
+        if not conv_qid or not my_urn:
+            return []
+        my_urn_encoded = my_urn.replace(":", "%3A")
+
+        data = self._api_get(
+            f"/voyagerMessagingGraphQL/graphql?queryId={conv_qid}"
+            f"&variables=(mailboxUrn:{my_urn_encoded})"
+        )
+        feed = (data or {}).get("data", {})
+        # Find the key with elements
+        elements = []
+        for k, v in feed.items():
+            if isinstance(v, dict) and "elements" in v:
+                elements = v["elements"]
                 break
-        script = r'''
-        var convos = [];
-        var items = document.querySelectorAll('.msg-conversation-listitem');
-        for (var i = 0; i < items.length; i++) {
-            var item = items[i];
-            var text = item.innerText.trim();
-            var lines = text.split('\n').filter(function(l) { return l.trim().length > 0; }).map(function(l) { return l.trim(); });
-            var name = '';
-            var date = '';
-            var lastMessage = '';
-            for (var j = 0; j < lines.length; j++) {
-                var line = lines[j];
-                if (line.startsWith('Status:')) continue;
-                if (!name) { name = line; continue; }
-                if (!date && (line.match(/\d/) || line.indexOf('.') > 0)) { date = line; continue; }
-                if (date === line) continue;
-                if (!lastMessage && line.length > 5) { lastMessage = line; break; }
-            }
-            if (name) {
-                convos.push({participants: name, lastMessage: lastMessage, date: date});
-            }
-        }
-        return convos;
-        '''
-        convos = self.driver.execute_script(script) or []
+
+        convos = []
+        for el in elements[:limit]:
+            # Get participant names (skip self)
+            parts = el.get("conversationParticipants", [])
+            names = []
+            for p in parts:
+                if my_urn in p.get("entityUrn", ""):
+                    continue
+                pt = (p.get("participantType") or {})
+                member = (pt.get("member") or {})
+                fn = member.get("firstName") or {}
+                ln = member.get("lastName") or {}
+                fn_text = fn.get("text", "") if isinstance(fn, dict) else str(fn)
+                ln_text = ln.get("text", "") if isinstance(ln, dict) else str(ln)
+                full = f"{fn_text} {ln_text}".strip()
+                if full:
+                    names.append(full)
+
+            # Get last message preview
+            msgs = el.get("messages") or {}
+            msg_els = msgs.get("elements", []) if isinstance(msgs, dict) else []
+            last_text = ""
+            if msg_els:
+                body = msg_els[0].get("body") or {}
+                last_text = body.get("text", "") if isinstance(body, dict) else str(body)
+
+            # Conversation URN for read_conversation
+            entity_urn = el.get("entityUrn", "")
+
+            from datetime import datetime
+            ts = el.get("lastActivityAt", 0)
+            date_str = datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d %H:%M") if ts else ""
+
+            convos.append({
+                "participants": ", ".join(names) or "Unknown",
+                "lastMessage": last_text[:200],
+                "date": date_str,
+                "conversationUrn": entity_urn,
+            })
+
         return convos[:limit]
 
     def get_conversation(self, conversation_urn_id: str = None, name: str = None) -> list:
-        """Get messages from a conversation. Pass name to find by participant name."""
+        """Get messages from a conversation via GraphQL API."""
         if name:
-            # Navigate to messaging page
-            self.driver.get("https://www.linkedin.com/messaging/")
-            time.sleep(5)
-            # Click on the conversation matching the name
-            clicked = self.driver.execute_script("""
-                var items = document.querySelectorAll('.msg-conversation-listitem');
-                var target = arguments[0].toLowerCase();
-                for (var i = 0; i < items.length; i++) {
-                    var text = items[i].innerText.toLowerCase();
-                    if (text.indexOf(target) >= 0) {
-                        items[i].click();
-                        return true;
-                    }
-                }
-                return false;
-            """, name.lower())
-            if not clicked:
+            # Load conversations and find matching one
+            convos = self.get_conversations(limit=50)
+            target = name.lower()
+            conv_urn = None
+            for c in convos:
+                if target in c.get("participants", "").lower():
+                    conv_urn = c.get("conversationUrn", "")
+                    break
+            if not conv_urn:
                 return []
-            time.sleep(4)
-            # Scrape messages — use a simple, lightweight script to avoid tab crash
-            try:
-                msgs = self.driver.execute_script(r'''
-                    var msgs = [];
-                    var seen = {};
-                    var events = document.querySelectorAll(".msg-s-event-listitem");
-                    for (var i = 0; i < events.length; i++) {
-                        var ev = events[i];
-                        var senderEl = ev.querySelector(".msg-s-message-group__name");
-                        var bodyEl = ev.querySelector(".msg-s-event-listitem__body");
-                        var timeEl = ev.querySelector("time");
-                        var body = bodyEl ? bodyEl.innerText.trim() : ev.innerText.trim().substring(0, 300);
-                        if (!body || body.length < 2) continue;
-                        var key = body.substring(0, 80);
-                        if (seen[key]) continue;
-                        seen[key] = true;
-                        msgs.push({
-                            sender: senderEl ? senderEl.innerText.trim() : '',
-                            body: body,
-                            time: timeEl ? timeEl.innerText.trim() : ''
-                        });
-                    }
-                    return msgs;
-                ''') or []
-            except Exception:
-                msgs = []
-            return msgs
+            return self._get_messages_by_urn(conv_urn)
         elif conversation_urn_id:
-            data = self._api_get(f"/messaging/conversations/{conversation_urn_id}/events")
-            return data.get("elements", []) if isinstance(data, dict) else []
+            # Build full conversation URN if just the thread ID was given
+            if not conversation_urn_id.startswith("urn:"):
+                me = self.get_user_profile()
+                my_urn = me.get("entityUrn", "")
+                conversation_urn_id = f"urn:li:msg_conversation:({my_urn},{conversation_urn_id})"
+            return self._get_messages_by_urn(conversation_urn_id)
         return []
+
+    def _get_messages_by_urn(self, conversation_urn: str) -> list:
+        """Fetch messages for a conversation URN via GraphQL."""
+        # Ensure messaging page is loaded (for queryId capture)
+        if "messaging" not in (self.driver.current_url or ""):
+            self.driver.get("https://www.linkedin.com/messaging/")
+            time.sleep(4)
+
+        qids = self._get_messaging_query_ids()
+        msg_qid = qids.get("messages")
+        if not msg_qid:
+            return []
+
+        conv_urn_encoded = conversation_urn.replace(":", "%3A").replace("(", "%28").replace(")", "%29").replace(",", "%2C")
+
+        data = self._api_get(
+            f"/voyagerMessagingGraphQL/graphql?queryId={msg_qid}"
+            f"&variables=(conversationUrn:{conv_urn_encoded})"
+        )
+        feed = (data or {}).get("data", {})
+        elements = []
+        for k, v in feed.items():
+            if isinstance(v, dict) and "elements" in v:
+                elements = v["elements"]
+                break
+
+        msgs = []
+        for msg in elements:
+            body = msg.get("body") or {}
+            text = body.get("text", "") if isinstance(body, dict) else str(body)
+
+            sender_obj = msg.get("sender") or msg.get("actor") or {}
+            pt = (sender_obj.get("participantType") or {})
+            member = (pt.get("member") or {})
+            fn = member.get("firstName") or {}
+            ln = member.get("lastName") or {}
+            fn_text = fn.get("text", "") if isinstance(fn, dict) else str(fn)
+            ln_text = ln.get("text", "") if isinstance(ln, dict) else str(ln)
+            sender_name = f"{fn_text} {ln_text}".strip()
+
+            from datetime import datetime
+            ts = msg.get("deliveredAt", 0)
+            time_str = datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d %H:%M") if ts else ""
+
+            if text:
+                msgs.append({"sender": sender_name, "body": text, "time": time_str})
+
+        return msgs
 
     def send_message(self, message_body: str, conversation_urn_id=None, recipients=None):
         # Messages require POST - use fetch in browser
@@ -858,30 +984,52 @@ class LinkedinClient:
         posts = self.driver.execute_script(script) or []
         return posts[:limit]
 
-    def follow_company(self, following_state_urn: str, following: bool = True):
-        """Follow or unfollow a company."""
-        url = f"{VOYAGER_API}/feed/follows"
-        payload = {"urn": following_state_urn, "following": following}
-        script = """
-        const resp = await fetch(arguments[0], {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-RestLi-Protocol-Version': '2.0.0',
-                'csrf-token': document.cookie.match(/JSESSIONID="?([^";]+)/)?.[1] || '',
-            },
-            credentials: 'include',
-            body: JSON.stringify(arguments[1]),
-        });
-        return {status: resp.status};
-        """
-        return self.driver.execute_script(
-            f"return (async () => {{ {script} }})()", url, payload
-        )
+    def follow_company(self, public_id: str = None, following_state_urn: str = None, following: bool = True):
+        """Follow or unfollow a company by clicking the button on the company page."""
+        company_id = public_id or following_state_urn
+        self.driver.get(f"https://www.linkedin.com/company/{company_id}/")
+        time.sleep(4)
+        # Find follow button by its CSS class (language-independent)
+        script = r'''
+        var btn = document.querySelector('.org-company-follow-button, button[class*="follow-button"]');
+        if (!btn) return {clicked: false, error: 'no follow button found'};
+        var isFollowing = btn.classList.contains('is-following') ||
+                          btn.getAttribute('aria-pressed') === 'true';
+        var wantFollow = arguments[0];
+        if (wantFollow && !isFollowing) {
+            btn.click();
+            return {clicked: true, action: 'followed'};
+        } else if (!wantFollow && isFollowing) {
+            btn.click();
+            return {clicked: true, action: 'unfollowed', needsConfirm: true};
+        }
+        return {clicked: false, action: wantFollow ? 'already following' : 'not following'};
+        '''
+        result = self.driver.execute_script(script, following)
+        # Unfollow triggers a confirmation dialog — click the confirm button
+        if isinstance(result, dict) and result.get("needsConfirm"):
+            time.sleep(1)
+            self.driver.execute_script(r'''
+            var modal = document.querySelector('[role="dialog"], [role="alertdialog"], .artdeco-modal');
+            if (modal) {
+                var btns = modal.querySelectorAll('button');
+                for (var i = 0; i < btns.length; i++) {
+                    var cls = btns[i].className || '';
+                    if (cls.indexOf('artdeco-button--primary') >= 0) {
+                        btns[i].click();
+                        return;
+                    }
+                }
+                // Fallback: click last button (usually the confirm action)
+                if (btns.length > 1) btns[btns.length - 1].click();
+            }
+            ''')
+            time.sleep(1)
+        return result
 
     def unfollow_entity(self, urn_id: str):
-        """Unfollow an entity by URN."""
-        return self.follow_company(following_state_urn=urn_id, following=False)
+        """Unfollow an entity."""
+        return self.follow_company(public_id=urn_id, following=False)
 
     def get_job(self, job_id: str) -> dict:
         data = self._api_get(f"/jobs/jobPostings/{job_id}")
@@ -987,6 +1135,164 @@ class LinkedinClient:
             start += len(page)
         return results[:limit]
 
+    def search_posts(self, keywords=None, limit=25, sort_by=None,
+                     date_posted=None, content_type=None,
+                     from_member=None, from_company=None,
+                     posted_by=None, mentioning=None) -> list:
+        """Search for posts/content on LinkedIn with filters.
+
+        Filters:
+            sort_by: "relevance" or "date_posted"
+            date_posted: "past-24h", "past-week", "past-month"
+            content_type: "videos", "images", "documents", "job-postings", "liveVideos"
+            from_member: member URN (ACoAAB...)
+            from_company: company URN or ID
+            posted_by: "first" (1st connections), "following" (people you follow)
+            mentioning: member URN
+        """
+        import re as _re
+        from urllib.parse import quote
+        kw = quote(keywords or "")
+        if not kw:
+            return []
+
+        # Build filter URL params
+        params = [f"keywords={kw}", "origin=FACETED_SEARCH"]
+        if sort_by and sort_by != "relevance":
+            params.append(f"sortBy=%5B%22{quote(sort_by)}%22%5D")
+        if date_posted:
+            params.append(f"datePosted=%5B%22{quote(date_posted)}%22%5D")
+        if content_type:
+            params.append(f"contentType=%5B%22{quote(content_type)}%22%5D")
+        if from_member:
+            params.append(f"fromMember=%5B%22{quote(from_member)}%22%5D")
+        if from_company:
+            params.append(f"fromOrganization=%5B%22{quote(from_company)}%22%5D")
+        if posted_by:
+            params.append(f"postedBy=%5B%22{quote(posted_by)}%22%5D")
+        if mentioning:
+            params.append(f"mentionedMember=%5B%22{quote(mentioning)}%22%5D")
+
+        all_posts = []
+        seen = set()
+        pages_needed = max(1, (limit + 2) // 3)  # ~3 posts per page
+
+        for page in range(1, pages_needed + 1):
+            url = f"https://www.linkedin.com/search/results/content/?{'&'.join(params)}&page={page}"
+            self.driver.get(url)
+            time.sleep(6)
+
+            # Extract activity URNs from page source (order matches DOM)
+            source = self.driver.page_source
+            urn_list = []
+            for m in _re.finditer(r'urn:li:activity:(\d+)', source):
+                if m.group(1) not in seen and m.group(1) not in [u for u in urn_list]:
+                    urn_list.append(m.group(1))
+
+            # Extract posts from DOM
+            page_posts = self.driver.execute_script(r'''
+            var containers = document.querySelectorAll('[data-view-name="feed-full-update"]');
+            var posts = [];
+            for (var ci = 0; ci < containers.length; ci++) {
+                var el = containers[ci];
+                var text = el.innerText || "";
+                var lines = text.split("\n").map(function(l) { return l.trim(); }).filter(function(l) { return l; });
+                var startIdx = 0;
+                for (var j = 0; j < lines.length; j++) {
+                    if (lines[j].match(/^(Feed.post|Feed.Beitrag|Nummer)/i)) { startIdx = j + 1; continue; }
+                    break;
+                }
+                while (startIdx < lines.length && lines[startIdx].match(/^(Vorgeschlagen|Suggested)/i)) startIdx++;
+                var author = startIdx < lines.length ? lines[startIdx] : "";
+                author = author.replace(/\s*(Verified|Verifiziert|Premium|Open to work|Offen f).*/i, "")
+                    .replace(/\s+\d+(st|nd|rd|th|\.)?\+?\s*$/i, "").trim();
+                var postText = "";
+                for (var j = startIdx + 1; j < lines.length; j++) {
+                    if (lines[j].length > postText.length && lines[j].length > 20 &&
+                        !lines[j].match(/^\d+\s*(Reaktion|reaction|Kommentar|comment|Repost|Share)/i) &&
+                        !lines[j].match(/^(Follow|Folgen|Melden|Report|Alle\s\d|Zur\sWebsite|To\swebsite)/i)) {
+                        postText = lines[j];
+                    }
+                }
+                var rxMatch = text.match(/(\d[\d.,]*)\s*(Reaktion|reaction)/i);
+                var cmMatch = text.match(/(\d[\d.,]*)\s*(Kommentar|comment)/i);
+                posts.push({
+                    author: author, text: postText.substring(0, 500),
+                    reactions: rxMatch ? rxMatch[1] : "0",
+                    comments: cmMatch ? cmMatch[1] : "0"
+                });
+            }
+            return posts;
+            ''') or []
+
+            if not page_posts:
+                break
+
+            for i, p in enumerate(page_posts):
+                activity_id = urn_list[i] if i < len(urn_list) else ""
+                if activity_id in seen:
+                    continue
+                seen.add(activity_id)
+                all_posts.append({
+                    "author": p["author"],
+                    "text": p["text"],
+                    "reactions": p["reactions"],
+                    "comments": p["comments"],
+                    "activity_id": activity_id,
+                    "urn": f"urn:li:activity:{activity_id}" if activity_id else "",
+                })
+
+            if len(all_posts) >= limit:
+                break
+
+        return all_posts[:limit]
+
+    def search_groups(self, keywords=None, limit=25) -> list:
+        """Search for groups on LinkedIn."""
+        kw = keywords or ""
+        if not kw:
+            return []
+        results = []
+        page_size = min(limit, 49)
+        start = 0
+        while start < limit:
+            count = min(page_size, limit - start)
+            data = self._api_get(
+                f"/search/dash/clusters?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175"
+                f"&origin=SWITCH_SEARCH_VERTICAL&q=all&start={start}&count={count}"
+                f"&query=(keywords:{kw},flagshipSearchIntent:SEARCH_SRP"
+                f",queryParameters:(resultType:List(GROUPS)))"
+            )
+            page = self._extract_search_results(data)
+            results.extend(page)
+            if len(page) < count:
+                break
+            start += len(page)
+        return results[:limit]
+
+    def search_events(self, keywords=None, limit=25) -> list:
+        """Search for events on LinkedIn."""
+        kw = keywords or ""
+        if not kw:
+            return []
+        results = []
+        page_size = min(limit, 49)
+        start = 0
+        while start < limit:
+            count = min(page_size, limit - start)
+            data = self._api_get(
+                f"/search/dash/clusters?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175"
+                f"&origin=SWITCH_SEARCH_VERTICAL&q=all&start={start}&count={count}"
+                f"&query=(keywords:{kw},flagshipSearchIntent:SEARCH_SRP"
+                f",queryParameters:(resultType:List(EVENTS)))"
+            )
+            page = self._extract_search_results(data)
+            results.extend(page)
+            if len(page) < count:
+                break
+            start += len(page)
+        return results[:limit]
+
     def search_jobs(self, keywords=None, limit=25, **kwargs) -> list:
         """Search jobs by scraping the LinkedIn jobs search page."""
         from urllib.parse import quote
@@ -1056,6 +1362,196 @@ class LinkedinClient:
             start += page_size
 
         return all_results[:limit]
+
+    def get_post_analytics(self, post_urn: str) -> dict:
+        """Get post analytics via GraphQL export endpoint. Returns performance metrics and demographics."""
+        import re as _re, base64, tempfile, os
+
+        activity_id = post_urn.split(":")[-1]
+        # Load the analytics page to capture the queryId
+        self.driver.get(f"https://www.linkedin.com/analytics/post-summary/urn:li:activity:{activity_id}/")
+        time.sleep(4)
+
+        qid_url = self.driver.execute_script(r'''
+        var entries = performance.getEntriesByType("resource");
+        for (var i = 0; i < entries.length; i++) {
+            if (entries[i].name.indexOf("AnalyticsExports") >= 0) return entries[i].name;
+        }
+        return null;
+        ''')
+
+        if not qid_url:
+            # Try hardcoded queryId
+            qid = "voyagerPremiumDashAnalyticsExports.010b8b1d4bf6998ddff7ffecc03aa938"
+        else:
+            qid_match = _re.search(r'queryId=([^&]+)', qid_url)
+            qid = qid_match.group(1) if qid_match else ""
+
+        if not qid:
+            return {}
+
+        view_urn = f"urn%3Ali%3Afsd_edgeInsightsAnalyticsView%3A%28POST_SUMMARY%2Curn%3Ali%3Aactivity%3A{activity_id}%29"
+        data = self._api_get(f"/graphql?variables=(analyticsViewUrn:{view_urn})&queryId={qid}")
+        feed = (data or {}).get("data", {})
+
+        # Find download URL
+        dl_url = None
+        for k, v in feed.items():
+            if isinstance(v, dict) and "elements" in v:
+                for el in v["elements"]:
+                    if "downloadUrl" in el:
+                        dl_url = el["downloadUrl"]
+                        break
+
+        if not dl_url:
+            return {}
+
+        # Download XLSX via browser
+        b64 = self.driver.execute_script(r'''
+        var resp = await fetch(arguments[0], {credentials: "include"});
+        var buf = await resp.arrayBuffer();
+        var bytes = new Uint8Array(buf);
+        var binary = '';
+        for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        return btoa(binary);
+        ''', dl_url)
+
+        if not b64:
+            return {}
+
+        # Parse XLSX
+        xlsx_path = os.path.join(tempfile.gettempdir(), f"post_analytics_{activity_id}.xlsx")
+        with open(xlsx_path, "wb") as f:
+            f.write(base64.b64decode(b64))
+
+        try:
+            from openpyxl import load_workbook
+        except ImportError:
+            return {"error": "openpyxl not installed — run: pip install openpyxl"}
+
+        wb = load_workbook(xlsx_path)
+        result = {"activity_id": activity_id}
+
+        # Parse PERFORMANCE sheet
+        if "PERFORMANCE" in wb.sheetnames:
+            ws = wb["PERFORMANCE"]
+            for row in ws.iter_rows(values_only=True):
+                if row[0] and row[1]:
+                    key = str(row[0]).strip()
+                    val = str(row[1]).strip()
+                    if key in ("Impressions", "Reactions", "Comments", "Reposts", "Saves",
+                               "Members reached", "Profile viewers from this post",
+                               "Followers gained from this post", "Sends on LinkedIn"):
+                        result[key] = val
+                    elif key == "Post Date":
+                        result["date"] = val
+                    elif key == "Post URL":
+                        result["url"] = val
+
+        # Parse TOP DEMOGRAPHICS sheet
+        if "TOP DEMOGRAPHICS" in wb.sheetnames:
+            ws = wb["TOP DEMOGRAPHICS"]
+            demographics = {}
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if row[0] and row[1]:
+                    category = str(row[0]).strip()
+                    value = str(row[1]).strip()
+                    pct = row[2]
+                    if category not in demographics:
+                        demographics[category] = []
+                    pct_str = f"{pct:.1%}" if isinstance(pct, (int, float)) else str(pct or "")
+                    demographics[category].append({"value": value, "pct": pct_str})
+            result["demographics"] = demographics
+
+        os.remove(xlsx_path)
+        return result
+
+    def get_post(self, post_urn: str) -> dict:
+        """Get detailed post data via REST API."""
+        activity_id = post_urn.split(":")[-1]
+        data = self._api_get(f"/feed/updates/urn:li:activity:{activity_id}")
+        if not data:
+            return {}
+
+        update = data.get("value", {}).get("com.linkedin.voyager.feed.render.UpdateV2", {})
+
+        actor = update.get("actor") or {}
+        name = (actor.get("name") or {}).get("text", "")
+        desc = (actor.get("description") or {}).get("text", "")
+        date = (actor.get("subDescription") or {}).get("text", "")
+
+        commentary = update.get("commentary") or {}
+        text = (commentary.get("text") or {}).get("text", "")
+
+        social = update.get("socialDetail") or {}
+        counts = social.get("totalSocialActivityCounts") or {}
+
+        # Content type
+        content = update.get("content") or {}
+        content_type = ""
+        for k in content.keys():
+            if "Video" in k:
+                content_type = "Video"
+            elif "Image" in k:
+                content_type = "Image"
+            elif "Article" in k:
+                content_type = "Article"
+            elif "Document" in k:
+                content_type = "Document"
+
+        return {
+            "urn": f"urn:li:activity:{activity_id}",
+            "url": data.get("permalink", ""),
+            "author": name,
+            "headline": desc,
+            "date": date,
+            "text": text,
+            "content_type": content_type,
+            "impressions": counts.get("numImpressions", 0),
+            "views": counts.get("numViews", 0),
+            "reactions": counts.get("numLikes", 0),
+            "comments": counts.get("numComments", 0),
+            "shares": counts.get("numShares", 0),
+        }
+
+    def get_notifications(self, limit=25, unread_only=False) -> list:
+        """Get notifications via Voyager REST API with pagination."""
+        from datetime import datetime
+        all_notifs = []
+        page_size = 20
+        start = 0
+
+        while start < limit:
+            count = min(page_size, limit - start)
+            data = self._api_get(
+                f"/voyagerIdentityDashNotificationCards?count={count}&start={start}&q=filterVanityName"
+            )
+            elements = (data or {}).get("elements", [])
+            if not elements:
+                break
+
+            for el in elements:
+                read = el.get("read", True)
+                if unread_only and read:
+                    continue
+
+                headline = el.get("headline") or {}
+                h_text = headline.get("text", "") if isinstance(headline, dict) else str(headline)
+
+                ts = el.get("publishedAt", 0)
+                date_str = datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d %H:%M") if ts else ""
+
+                all_notifs.append({
+                    "headline": h_text,
+                    "date": date_str,
+                    "read": read,
+                })
+
+            start += len(elements)
+            if len(elements) < count:
+                break
+
+        return all_notifs[:limit]
 
     def quit(self):
         """Close the browser and clean up temp profile."""

@@ -83,6 +83,105 @@ def companies(
 
 
 @app.command()
+def posts(
+    keywords: str = typer.Argument(..., help="Search keywords"),
+    sort: str = typer.Option(None, "--sort", "-s", help="relevance (default) or date_posted"),
+    date: str = typer.Option(None, "--date", "-d", help="past-24h, past-week, past-month"),
+    content: str = typer.Option(None, "--content", help="videos, images, documents, job-postings, liveVideos"),
+    from_member: str = typer.Option(None, "--from-member", help="Member URN (ACoAAB...)"),
+    from_company: str = typer.Option(None, "--from-company", help="Company URN or ID"),
+    posted_by: str = typer.Option(None, "--posted-by", help="me, first (1st connections), or following"),
+    mentioning: str = typer.Option(None, "--mentioning", help="Member URN"),
+    limit: int = typer.Option(10, "--limit", "-n", help="Max results (~3 per page load)"),
+):
+    """Search for posts/content with filters.
+
+    Examples:
+      search posts "AI" --date past-week --sort date_posted
+      search posts "python" --content videos --limit 15
+      search posts "NLP" --from-company apostroph --posted-by first
+    """
+    from auth import get_client
+    api = get_client()
+    results = api.search_posts(
+        keywords=keywords, limit=limit, sort_by=sort,
+        date_posted=date, content_type=content,
+        from_member=from_member, from_company=from_company,
+        posted_by=posted_by, mentioning=mentioning,
+    )
+
+    table = Table(title=f"Post Search ({len(results)} results)")
+    table.add_column("#", style="dim", width=3)
+    table.add_column("Author", style="green", width=20)
+    table.add_column("Text", width=55)
+    table.add_column("Rx", style="yellow", justify="right", width=6)
+    table.add_column("Cm", style="yellow", justify="right", width=6)
+    table.add_column("Activity ID", style="cyan", width=20)
+
+    for i, p in enumerate(results, 1):
+        table.add_row(
+            str(i),
+            p.get("author", ""),
+            p.get("text", "")[:100],
+            p.get("reactions", "0"),
+            p.get("comments", "0"),
+            p.get("activity_id", ""),
+        )
+
+    console.print(table)
+
+
+@app.command()
+def groups(
+    keywords: str = typer.Argument(..., help="Search keywords"),
+    limit: int = typer.Option(25, "--limit", "-n", help="Max results"),
+):
+    """Search for groups."""
+    from auth import get_client
+    api = get_client()
+    results = api.search_groups(keywords=keywords, limit=limit)
+
+    table = Table(title=f"Group Search ({len(results)} results)")
+    table.add_column("Name", style="green")
+    table.add_column("Description")
+    table.add_column("URL", style="dim")
+
+    for g in results:
+        table.add_row(
+            g.get("name", ""),
+            (g.get("headline", "") or "")[:60],
+            g.get("url", ""),
+        )
+
+    console.print(table)
+
+
+@app.command()
+def events(
+    keywords: str = typer.Argument(..., help="Search keywords"),
+    limit: int = typer.Option(25, "--limit", "-n", help="Max results"),
+):
+    """Search for events."""
+    from auth import get_client
+    api = get_client()
+    results = api.search_events(keywords=keywords, limit=limit)
+
+    table = Table(title=f"Event Search ({len(results)} results)")
+    table.add_column("Name", style="green")
+    table.add_column("Details")
+    table.add_column("URL", style="dim")
+
+    for e in results:
+        table.add_row(
+            e.get("name", ""),
+            (e.get("headline", "") or "")[:60],
+            e.get("url", ""),
+        )
+
+    console.print(table)
+
+
+@app.command()
 def jobs(
     keywords: str = typer.Argument(None, help="Search keywords"),
     companies: str = typer.Option(None, "--company", "-c", help="Company ID"),

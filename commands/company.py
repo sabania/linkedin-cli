@@ -43,7 +43,7 @@ def show(
 @app.command()
 def updates(
     public_id: str = typer.Argument(..., help="Company public ID"),
-    limit: int = typer.Option(25, "--limit", "-n"),
+    limit: int = typer.Option(25, "--limit", "-n", help="Max results"),
 ):
     """Show recent company updates/posts."""
     from auth import get_client
@@ -68,21 +68,33 @@ def updates(
 
 @app.command()
 def follow(
-    urn: str = typer.Argument(..., help="Company following state URN"),
+    public_id: str = typer.Argument(..., help="Company public ID (URL slug)"),
 ):
     """Follow a company."""
     from auth import get_client
     api = get_client()
-    api.follow_company(following_state_urn=urn, following=True)
-    console.print("[green]Now following[/green]")
+    result = api.follow_company(public_id=public_id, following=True)
+    action = result.get("action", "") if isinstance(result, dict) else ""
+    if action == "followed":
+        console.print(f"[green]Now following {public_id}[/green]")
+    elif action == "already following":
+        console.print(f"[dim]Already following {public_id}[/dim]")
+    else:
+        console.print(f"[red]Could not follow {public_id}: {action}[/red]")
 
 
 @app.command()
 def unfollow(
-    urn: str = typer.Argument(..., help="Entity URN to unfollow"),
+    public_id: str = typer.Argument(..., help="Company public ID (URL slug)"),
 ):
-    """Unfollow an entity."""
+    """Unfollow a company."""
     from auth import get_client
     api = get_client()
-    api.unfollow_entity(urn_id=urn)
-    console.print("[yellow]Unfollowed[/yellow]")
+    result = api.follow_company(public_id=public_id, following=False)
+    action = result.get("action", "") if isinstance(result, dict) else ""
+    if action == "unfollowed":
+        console.print(f"[yellow]Unfollowed {public_id}[/yellow]")
+    elif action == "not following":
+        console.print(f"[dim]Not following {public_id}[/dim]")
+    else:
+        console.print(f"[red]Could not unfollow {public_id}: {action}[/red]")

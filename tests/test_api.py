@@ -249,6 +249,69 @@ class TestSearch:
         results = api.search_people(keywords="software engineer", limit=3)
         assert isinstance(results, list)
 
+    def test_search_posts(self, api):
+        results = api.search_posts(keywords="AI", limit=3)
+        assert isinstance(results, list)
+
+    def test_search_posts_has_content(self, api):
+        results = api.search_posts(keywords="python", limit=3)
+        if results:
+            assert any(p.get("text") or p.get("activity_id") for p in results)
+
+    def test_search_groups(self, api):
+        results = api.search_groups(keywords="python", limit=3)
+        assert isinstance(results, list)
+
+    def test_search_groups_has_name(self, api):
+        results = api.search_groups(keywords="data science", limit=3)
+        if results:
+            assert any(g.get("name") for g in results)
+
+    def test_search_events(self, api):
+        results = api.search_events(keywords="AI", limit=3)
+        assert isinstance(results, list)
+
+
+# ──────────────────────────────────────────────
+# Notifications
+# ──────────────────────────────────────────────
+
+class TestNotifications:
+    def test_returns_list(self, api):
+        result = api.get_notifications(limit=3)
+        assert isinstance(result, list)
+
+    def test_notification_has_headline(self, api):
+        result = api.get_notifications(limit=5)
+        if result:
+            assert any(n.get("headline") for n in result)
+
+
+# ──────────────────────────────────────────────
+# Post Details
+# ──────────────────────────────────────────────
+
+class TestPostDetails:
+    def test_get_post(self, api, first_post_urn):
+        if not first_post_urn:
+            pytest.skip("No posts found")
+        post = api.get_post(post_urn=first_post_urn)
+        assert isinstance(post, dict)
+
+    def test_post_has_fields(self, api, first_post_urn):
+        if not first_post_urn:
+            pytest.skip("No posts found")
+        post = api.get_post(post_urn=first_post_urn)
+        if post:
+            assert "author" in post
+            assert "reactions" in post
+
+    def test_get_post_analytics(self, api, first_post_urn):
+        if not first_post_urn:
+            pytest.skip("No posts found")
+        result = api.get_post_analytics(post_urn=first_post_urn)
+        assert isinstance(result, dict)
+
 
 # ──────────────────────────────────────────────
 # Company
@@ -258,6 +321,10 @@ class TestCompany:
     def test_get_company(self, api):
         company = api.get_company(public_id="microsoft")
         assert isinstance(company, dict)
+
+    def test_get_company_updates(self, api):
+        updates = api.get_company_updates(public_id="microsoft", limit=2)
+        assert isinstance(updates, list)
 
 
 # ──────────────────────────────────────────────

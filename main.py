@@ -22,6 +22,7 @@ from commands.search import app as search_app
 from commands.messaging import app as messaging_app
 from commands.jobs import app as jobs_app
 from commands.company import app as company_app
+from commands.notifications import app as notifications_app
 
 app = typer.Typer(
     name="linkedin-cli",
@@ -37,6 +38,7 @@ app.add_typer(search_app, name="search", help="Search people, companies, jobs")
 app.add_typer(messaging_app, name="messages", help="Messaging")
 app.add_typer(jobs_app, name="jobs", help="Job search & details")
 app.add_typer(company_app, name="company", help="Company info & updates")
+app.add_typer(notifications_app, name="notifications", help="Notifications")
 
 
 @app.command()
