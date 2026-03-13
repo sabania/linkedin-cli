@@ -107,6 +107,25 @@ Prüfe ob config.json im CWD existiert.
     ```bash
     linkedin-cli --help 2>/dev/null
     ```
+    Falls nicht gefunden — automatisch installieren je nach Umgebung:
+
+    **Windows (PowerShell):**
+    ```bash
+    powershell -Command "irm https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.ps1 | iex"
+    ```
+
+    **macOS / Linux:**
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.sh | bash
+    ```
+
+    **From Source (falls pip verfügbar):**
+    ```bash
+    git clone https://github.com/sabania/linkedin-cli.git ~/.linkedin-cli-src
+    cd ~/.linkedin-cli-src && pip install -r requirements.txt
+    ```
+
+    → Nach Installation nochmal `linkedin-cli --help` prüfen. Falls PATH nicht aktuell, User auf Terminal-Neustart hinweisen.
 
 13. **LinkedIn Login**
     ```bash
