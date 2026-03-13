@@ -89,7 +89,7 @@ def jobs(
     location: str = typer.Option(None, "--location", "-l", help="Location name"),
     remote: str = typer.Option(None, "--remote", "-r", help="1=onsite, 2=remote, 3=hybrid"),
     job_type: str = typer.Option(None, "--type", "-t", help="F=full, C=contract, P=part, T=temp, I=intern, V=volunteer"),
-    limit: int = typer.Option(25, "--limit", help="Max results"),
+    limit: int = typer.Option(25, "--limit", "-n", help="Max results"),
 ):
     """Search for jobs."""
     from auth import get_client

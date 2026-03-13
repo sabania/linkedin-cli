@@ -569,7 +569,7 @@ class LinkedinClient:
         self.driver.get("https://www.linkedin.com/messaging/")
         time.sleep(4)
         # Scroll conversation list to load more
-        scroll_count = min(max(1, limit // 10), 8)
+        scroll_count = min(max(3, limit // 5), 15)
         for _ in range(scroll_count):
             try:
                 self.driver.execute_script(
@@ -992,29 +992,33 @@ class LinkedinClient:
         from urllib.parse import quote
         kw = quote(keywords or "")
         location = quote(kwargs.get("location_name", ""))
-        url = f"https://www.linkedin.com/jobs/search/?keywords={kw}"
+        base_url = f"https://www.linkedin.com/jobs/search/?keywords={kw}"
         if location:
-            url += f"&location={location}"
-        self.driver.get(url)
-        time.sleep(4)
-        # Scroll to load more results
-        scroll_count = min(max(3, limit // 5), 15)
-        for i in range(scroll_count):
-            self.driver.execute_script(f"window.scrollTo(0, {(i + 1) * 800})")
-            time.sleep(0.5)
-        time.sleep(1)
-        script = r'''
+            base_url += f"&location={location}"
+
+        all_results = []
+        seen = {}
+        page_size = 25  # LinkedIn shows 25 jobs per page
+        start = 0
+
+        scrape_script = r'''
         var results = [];
-        var seen = {};
-        var cards = document.querySelectorAll('[data-job-id], .job-card-container, .scaffold-layout__list-item');
-        for (var i = 0; i < cards.length; i++) {
-            var card = cards[i];
+        var seen = arguments[0];
+        var items = document.querySelectorAll('.scaffold-layout__list-item, [data-job-id]');
+        for (var i = 0; i < items.length; i++) {
+            var card = items[i];
+            // Find data-job-id on this element or inside it
             var jobId = card.getAttribute('data-job-id') || '';
+            if (!jobId) {
+                var inner = card.querySelector('[data-job-id]');
+                if (inner) jobId = inner.getAttribute('data-job-id');
+            }
             if (!jobId || seen[jobId]) continue;
             seen[jobId] = true;
             var titleEl = card.querySelector('.job-card-list__title, .artdeco-entity-lockup__title, a[class*="job-card"]');
             var companyEl = card.querySelector('.job-card-container__primary-description, .artdeco-entity-lockup__subtitle');
             var locationEl = card.querySelector('.job-card-container__metadata-item, .artdeco-entity-lockup__caption');
+            if (!titleEl) continue;
             results.push({
                 name: titleEl ? titleEl.innerText.trim().split('\n')[0] : '',
                 headline: companyEl ? companyEl.innerText.trim() : '',
@@ -1022,10 +1026,36 @@ class LinkedinClient:
                 urn_id: 'urn:li:jobPosting:' + jobId
             });
         }
-        return results;
+        return {results: results, seen: seen};
         '''
-        results = self.driver.execute_script(script) or []
-        return results[:limit]
+
+        while start < limit:
+            url = f"{base_url}&start={start}"
+            self.driver.get(url)
+            time.sleep(4)
+
+            # Scroll each list item into view to trigger LinkedIn's lazy rendering
+            item_count = self.driver.execute_script(
+                "return document.querySelectorAll('.scaffold-layout__list-item').length;"
+            ) or 0
+            for i in range(item_count):
+                self.driver.execute_script(
+                    "var items = document.querySelectorAll('.scaffold-layout__list-item');"
+                    f"if (items[{i}]) items[{i}].scrollIntoView({{block: 'center'}});"
+                )
+                time.sleep(0.3)
+            time.sleep(1)
+
+            page_data = self.driver.execute_script(scrape_script, seen) or {}
+            page_results = page_data.get("results", [])
+            seen = page_data.get("seen", seen)
+            all_results.extend(page_results)
+
+            if len(page_results) < page_size // 2:
+                break  # no more pages
+            start += page_size
+
+        return all_results[:limit]
 
     def quit(self):
         """Close the browser and clean up temp profile."""
