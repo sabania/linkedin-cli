@@ -1,0 +1,16 @@
+{
+  "marketplaceId": "sabania-linkedin-cli",
+  "name": "LinkedIn CLI Plugins",
+  "description": "Selbstlernendes LinkedIn-Marketing-System mit 9 AI Agents als Marketing-Team.",
+  "plugins": [
+    {
+      "name": "linkedin-commander",
+      "version": "3.0.0",
+      "description": "9 AI Agents als Marketing-Team: Content-Strategie, Post-Analyse, Lead-Generierung, Competitor-Tracking. Delta-basierte Pipeline mit Human-in-the-Loop.",
+      "source": {
+        "source": "local",
+        "path": "./plugin"
+      }
+    }
+  ]
+}
