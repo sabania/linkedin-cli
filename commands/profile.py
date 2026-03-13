@@ -81,12 +81,12 @@ def skills(
 
 @app.command()
 def experiences(
-    username: str = typer.Argument(..., help="LinkedIn public profile ID or URN ID"),
+    username: str = typer.Argument(..., help="LinkedIn public profile ID"),
 ):
     """List experiences of a profile."""
     from auth import get_client
     api = get_client()
-    result = api.get_profile_experiences(urn_id=username)
+    result = api.get_profile_experiences(public_id=username)
 
     if not result:
         console.print("[dim]No experiences found.[/dim]")

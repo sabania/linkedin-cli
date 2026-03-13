@@ -110,31 +110,26 @@ class LinkedinClient:
             self.driver.execute_script(f"window.scrollTo(0, {(i + 1) * 500})")
             time.sleep(0.3)
         time.sleep(1)
+        # Language-independent: each skill has an edit/forms link, skill name is in previousSibling
         script = r'''
+        var main = document.querySelector('main');
+        if (!main) return [];
         var skills = [];
-        var text = document.body.innerText;
-        var lines = text.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l.length > 1; });
-        var started = false;
-        var stopWords = ['Ihre Besucher', 'Weitere laden', 'Info', 'Barrierefreiheit'];
-        var skipWords = ['Alle', 'Branchenwissen', 'Tools & Technologien', 'Tools & Technologies',
-                         'Industry Knowledge', 'Interpersonal Skills', 'Other Skills', 'Kenntnisse',
-                         'LinkedIn Kenntnistest', 'Kenntnisbestätigungen', 'Kenntnisbestätigung'];
-        for (var i = 0; i < lines.length; i++) {
-            var l = lines[i];
-            if (l === 'Kenntnisse' || l === 'Skills') { started = true; continue; }
-            if (!started) continue;
-            var stop = false;
-            for (var j = 0; j < stopWords.length; j++) {
-                if (l.indexOf(stopWords[j]) >= 0) { stop = true; break; }
-            }
-            if (stop) break;
-            var skip = false;
-            for (var j = 0; j < skipWords.length; j++) {
-                if (l === skipWords[j] || l.indexOf('Kenntnistest') >= 0 || l.match(/^\d+ Kenntnisbest/)) { skip = true; break; }
-            }
-            if (skip) continue;
-            if (l.length > 1 && l.length < 60) {
-                skills.push({name: l});
+        var seen = {};
+        var editLinks = main.querySelectorAll('a[href*="/details/skills/edit/forms/"]');
+        for (var i = 0; i < editLinks.length; i++) {
+            var href = editLinks[i].getAttribute('href') || '';
+            var formId = href.match(/edit\/forms\/(\w+)/);
+            if (!formId || seen[formId[1]]) continue;
+            seen[formId[1]] = true;
+            var parent = editLinks[i].parentElement;
+            if (!parent) continue;
+            var prev = parent.previousElementSibling;
+            if (prev) {
+                var name = prev.innerText.trim().split('\n')[0].trim();
+                if (name && name.length > 0 && name.length < 80) {
+                    skills.push({name: name});
+                }
             }
         }
         return skills;
@@ -479,44 +474,84 @@ class LinkedinClient:
             start += len(page_results)
         return results
 
-    def get_profile_experiences(self, urn_id: str) -> list:
+    def get_profile_experiences(self, public_id: str = None, urn_id: str = None) -> list:
         """Get work experiences of a profile by scraping the experience section."""
-        self.driver.get(f"https://www.linkedin.com/in/{urn_id}/details/experience/")
+        profile_id = public_id or urn_id
+        self.driver.get(f"https://www.linkedin.com/in/{profile_id}/details/experience/")
         time.sleep(4)
         for i in range(8):
             self.driver.execute_script(f"window.scrollTo(0, {(i + 1) * 600})")
             time.sleep(0.3)
         time.sleep(1)
+        # Language-independent scraping using edit/forms links as anchors
         script = r'''
+        var main = document.querySelector('main');
+        if (!main) return [];
         var exps = [];
-        var navItems = ['Start', 'Ihr Netzwerk', 'Jobs', 'Nachrichten',
-                        'Mitteilungen', 'Sie', 'Produkte', 'Marketing',
-                        'Home', 'My Network', 'Messaging', 'Notifications', 'Me'];
-        var lis = document.querySelectorAll('li');
-        for (var i = 0; i < lis.length; i++) {
-            var li = lis[i];
-            var text = li.innerText.trim();
-            if (text.indexOf('\n') === -1 || text.length < 15) continue;
-            var lines = text.split('\n').filter(function(l) {
-                return l.trim().length > 0;
-            }).map(function(l) { return l.trim(); });
-            if (navItems.indexOf(lines[0]) >= 0) continue;
-            if (lines.length < 2) continue;
+        var midDot = '\u00B7';
+
+        // Each experience entry has an <a> link to /details/experience/edit/forms/{id}/
+        var editLinks = main.querySelectorAll('a[href*="/details/experience/edit/forms/"]');
+        var seen = {};
+
+        for (var i = 0; i < editLinks.length; i++) {
+            var link = editLinks[i];
+            var href = link.getAttribute('href') || '';
+            var formId = href.match(/edit\/forms\/(\d+)/);
+            if (!formId || seen[formId[1]]) continue;
+            seen[formId[1]] = true;
+
+            // Link text contains everything: "Title\nCompany · Type\nPeriod\nLocation"
+            var linkText = link.innerText.trim();
+            var lines = linkText.split('\n').filter(function(l) { return l.trim().length > 0; }).map(function(l) { return l.trim(); });
+            if (lines.length === 0) continue;
+
             var title = lines[0] || '';
-            var period = lines[1] || '';
-            var location = lines.length > 2 ? lines[2] : '';
-            // Get company from grandparent container
-            var company = '';
-            var gp = li.parentElement ? li.parentElement.parentElement : null;
-            if (gp) {
-                var gpLines = gp.innerText.trim().split('\n').filter(function(l) {
-                    return l.trim().length > 0;
-                }).map(function(l) { return l.trim(); });
-                if (gpLines.length > 0 && gpLines[0] !== title) {
-                    company = gpLines[0];
+            var companyName = '';
+            var period = '';
+            var location = '';
+
+            // Parse remaining lines by pattern (language-independent)
+            for (var j = 1; j < lines.length; j++) {
+                var line = lines[j];
+                if (!companyName && line.indexOf(midDot) >= 0 && !/\d{4}/.test(line.split(midDot)[0])) {
+                    // "Company · Employment type" line
+                    companyName = line.split(midDot)[0].trim();
+                } else if (!period && /\d{4}/.test(line) && (line.indexOf('\u2013') >= 0 || line.indexOf('-') >= 0 || line.indexOf(midDot) >= 0)) {
+                    // Period line (contains year + dash/en-dash/middot for duration)
+                    period = line;
+                } else if (period && !location && line.length < 80) {
+                    // Location follows period
+                    location = line;
                 }
             }
-            exps.push({title: title, companyName: company, timePeriod: period, location: location});
+
+            // For grouped roles (under a company), walk up past li > ul to the
+            // group container which has the company logo img
+            if (!companyName) {
+                var el = link;
+                for (var d = 0; d < 12; d++) {
+                    el = el.parentElement;
+                    if (!el || el === main) break;
+                    // Only check for img once we've passed through a ul (grouped structure)
+                    var tag = el.tagName.toLowerCase();
+                    if (tag === 'ul') {
+                        // The parent of this ul is the group container with the company img
+                        var groupDiv = el.parentElement;
+                        if (groupDiv) {
+                            var img = groupDiv.querySelector('img[alt]');
+                            if (img) {
+                                var alt = img.getAttribute('alt') || '';
+                                companyName = alt.replace(/^(Logo|Logotipo|Logotype)\s+(von|of|de|di|du|van)\s+/i, '')
+                                                 .replace(/\s+(logo|Logo)$/i, '').trim();
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+
+            exps.push({title: title, companyName: companyName, timePeriod: period, location: location});
         }
         return exps;
         '''
@@ -689,16 +724,19 @@ class LinkedinClient:
         return results[:limit]
 
     def add_connection(self, profile_public_id: str, message="", profile_urn=None):
-        url = f"{VOYAGER_API}/growth/normInvitations"
+        import base64
+        import os
+        # Resolve public ID to profile URN
+        profile = self.get_profile(public_id=profile_public_id)
+        urn = profile.get("entityUrn", "")
+        if not urn:
+            return {"status": 404}
+        url = f"{VOYAGER_API}/relationships/dash/memberRelationships?action=verifyQuotaAndCreate"
+        tracking_id = base64.b64encode(os.urandom(16)).decode()
         payload = {
-            "invitee": {
-                "com.linkedin.voyager.growth.invitation.InviteeProfile": {
-                    "profileId": profile_public_id
-                }
-            }
+            "inviteeProfileUrn": urn,
+            "trackingId": tracking_id,
         }
-        if message:
-            payload["message"] = message
 
         script = """
         const resp = await fetch(arguments[0], {
@@ -891,14 +929,22 @@ class LinkedinClient:
         seen = set()
         skip_words = ['equal opportunity', 'accommodat', 'position will be open',
                        'microsoft is', 'benefits', 'salary', 'compensation']
-        # Split into sections by common headers
+        # Split into sections by common headers (multi-language)
+        header_pattern = (
+            r'Required|Preferred|Qualifications|Skills|Requirements'  # EN
+            r'|Kenntnisse|Anforderungen|Voraussetzungen|Qualifikationen'  # DE
+            r'|Comp[eé]tences|Exigences|Pr[eé]requis|Qualifications'  # FR
+            r'|Competenze|Requisiti|Qualifiche'  # IT
+            r'|Habilidades|Requisitos|Cualificaciones|Competencias'  # ES
+            r'|Vaardigheden|Vereisten|Kwalificaties'  # NL
+        )
         sections = re.split(
-            r'\n(?=(?:Required|Preferred|Qualifications|Skills|Kenntnisse|Requirements|Anforderungen))',
+            r'\n(?=(?:' + header_pattern + r'))',
             desc_text, flags=re.IGNORECASE
         )
         for section in sections:
             header_match = re.match(
-                r'(Required|Preferred|Qualifications|Skills|Kenntnisse|Requirements|Anforderungen)[^\n]*',
+                r'(' + header_pattern + r')[^\n]*',
                 section, re.IGNORECASE
             )
             if not header_match:
