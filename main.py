@@ -23,6 +23,7 @@ from commands.messaging import app as messaging_app
 from commands.jobs import app as jobs_app
 from commands.company import app as company_app
 from commands.notifications import app as notifications_app
+from commands.signals import app as signals_app
 
 app = typer.Typer(
     name="linkedin-cli",
@@ -39,6 +40,7 @@ app.add_typer(messaging_app, name="messages", help="Messaging")
 app.add_typer(jobs_app, name="jobs", help="Job search & details")
 app.add_typer(company_app, name="company", help="Company info & updates")
 app.add_typer(notifications_app, name="notifications", help="Notifications")
+app.add_typer(signals_app, name="signals", help="Daily signals & briefing")
 
 
 @app.command()
@@ -63,7 +65,9 @@ def login(
 
 
 @app.command()
-def whoami():
+def whoami(
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
+):
     """Show current logged-in profile."""
     from auth import get_client
     from rich.console import Console
@@ -72,6 +76,12 @@ def whoami():
     console = Console()
     api = get_client()
     profile = api.get_user_profile()
+
+    if json_output:
+        from commands import output_json
+        output_json(profile)
+        return
+
     mini = profile.get("miniProfile", {})
 
     table = Table(title="Current Profile")

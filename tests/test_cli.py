@@ -340,6 +340,39 @@ class TestPostsAnalytics:
 
 
 # ──────────────────────────────────────────────
+# posts engagers
+# ──────────────────────────────────────────────
+
+class TestPostsEngagers:
+    def test_engagers_exits_ok(self, cli_app, first_post_activity_id):
+        if not first_post_activity_id:
+            pytest.skip("No posts found")
+        result = runner.invoke(cli_app, ["posts", "engagers", first_post_activity_id, "-n", "5"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+
+    def test_engagers_shows_table(self, cli_app, first_post_activity_id):
+        if not first_post_activity_id:
+            pytest.skip("No posts found")
+        result = runner.invoke(cli_app, ["posts", "engagers", first_post_activity_id, "-n", "5"])
+        assert "Engagers" in result.output or "No engagers" in result.output
+
+
+# ──────────────────────────────────────────────
+# signals daily
+# ──────────────────────────────────────────────
+
+class TestSignalsDaily:
+    def test_signals_daily_exits_ok(self, cli_app):
+        result = runner.invoke(cli_app, ["signals", "daily", "-n", "2", "--posts", "1"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+
+    def test_signals_daily_shows_sections(self, cli_app):
+        result = runner.invoke(cli_app, ["signals", "daily", "-n", "2", "--posts", "1"])
+        assert "Profile Views" in result.output
+        assert "Invitations" in result.output or "Pending Invitations" in result.output
+
+
+# ──────────────────────────────────────────────
 # help commands (no auth needed)
 # ──────────────────────────────────────────────
 
@@ -384,3 +417,69 @@ class TestHelp:
     def test_notifications_help(self, cli_app):
         result = runner.invoke(cli_app, ["notifications", "--help"])
         assert result.exit_code == 0
+
+    def test_signals_help(self, cli_app):
+        result = runner.invoke(cli_app, ["signals", "--help"])
+        assert result.exit_code == 0
+
+
+# ──────────────────────────────────────────────
+# --json flag
+# ──────────────────────────────────────────────
+
+class TestJsonFlag:
+    """Verify --json flag outputs valid JSON for key commands."""
+
+    def _parse_json(self, output):
+        import json
+        return json.loads(output)
+
+    def test_whoami_json(self, cli_app):
+        result = runner.invoke(cli_app, ["whoami", "--json"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+        data = self._parse_json(result.output)
+        assert isinstance(data, dict)
+
+    def test_profile_show_json(self, cli_app, my_public_id):
+        result = runner.invoke(cli_app, ["profile", "show", my_public_id, "--json"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+        data = self._parse_json(result.output)
+        assert isinstance(data, dict)
+        assert data.get("firstName")
+
+    def test_profile_posts_json(self, cli_app, my_public_id):
+        result = runner.invoke(cli_app, ["profile", "posts", my_public_id, "-n", "2", "--json"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+        data = self._parse_json(result.output)
+        assert isinstance(data, list)
+
+    def test_feed_list_json(self, cli_app):
+        result = runner.invoke(cli_app, ["feed", "list", "-n", "2", "--json"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+        data = self._parse_json(result.output)
+        assert isinstance(data, list)
+
+    def test_search_people_json(self, cli_app):
+        result = runner.invoke(cli_app, ["search", "people", "software", "--limit", "2", "--json"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+        data = self._parse_json(result.output)
+        assert isinstance(data, list)
+
+    def test_connections_invitations_json(self, cli_app):
+        result = runner.invoke(cli_app, ["connections", "invitations", "-n", "2", "--json"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+        data = self._parse_json(result.output)
+        assert isinstance(data, list)
+
+    def test_notifications_json(self, cli_app):
+        result = runner.invoke(cli_app, ["notifications", "list", "-n", "2", "--json"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+        data = self._parse_json(result.output)
+        assert isinstance(data, list)
+
+    def test_signals_daily_json(self, cli_app):
+        result = runner.invoke(cli_app, ["signals", "daily", "-n", "2", "--posts", "1", "--json"])
+        assert result.exit_code == 0, f"Failed: {result.output}"
+        data = self._parse_json(result.output)
+        assert isinstance(data, dict)
+        assert "profile_views" in data

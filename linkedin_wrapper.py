@@ -15,6 +15,17 @@ CONFIG_DIR = Path.home() / ".linkedin-cli"
 VOYAGER_API = "https://www.linkedin.com/voyager/api"
 
 
+def _urn_to_timestamp(urn_or_id: str) -> str:
+    """Extract timestamp from a LinkedIn Snowflake activity ID. Returns ISO 8601 UTC string."""
+    from datetime import datetime, timezone
+    try:
+        numeric = int(str(urn_or_id).split(":")[-1])
+        ms = (numeric >> 22) + 1197115136000
+        return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except (ValueError, OSError):
+        return ""
+
+
 class LinkedinClient:
     """LinkedIn client using Selenium for all API calls."""
 
@@ -224,6 +235,9 @@ class LinkedinClient:
                     "text": text[:500],
                     "reactions": str(counts.get("numLikes", 0)),
                     "comments": str(counts.get("numComments", 0)),
+                    "shares": str(counts.get("numShares", 0)),
+                    "posted_at": _urn_to_timestamp(urn),
+                    "post_url": f"https://www.linkedin.com/feed/update/{urn}/" if urn else "",
                 })
 
             start += len(elements)
@@ -283,6 +297,12 @@ class LinkedinClient:
                 actor = el.get("actor") or {}
                 name_obj = actor.get("name") or {}
                 author = name_obj.get("text", "") if isinstance(name_obj, dict) else str(name_obj)
+                # Extract author profile ID from navigationContext.actionTarget
+                author_profile_id = ""
+                nav_ctx = actor.get("navigationContext") or {}
+                action_target = nav_ctx.get("actionTarget", "") if isinstance(nav_ctx, dict) else ""
+                if "/in/" in action_target:
+                    author_profile_id = action_target.split("/in/")[-1].split("?")[0].rstrip("/")
 
                 # Social counts
                 social = el.get("socialDetail") or {}
@@ -290,12 +310,20 @@ class LinkedinClient:
                 reactions = str(counts.get("numLikes", 0))
                 comments = str(counts.get("numComments", 0))
 
+                # Repost detection
+                is_repost = bool(el.get("resharedUpdate"))
+
                 all_posts.append({
                     "urn": urn,
                     "text": text[:500],
                     "author": author,
+                    "author_profile_id": author_profile_id,
                     "reactions": reactions,
                     "comments": comments,
+                    "shares": str(counts.get("numShares", 0)),
+                    "posted_at": _urn_to_timestamp(urn),
+                    "post_url": f"https://www.linkedin.com/feed/update/{urn}/" if urn else "",
+                    "is_repost": is_repost,
                 })
 
             start += len(elements)
@@ -448,6 +476,8 @@ class LinkedinClient:
                 nav_url = entity.get("navigationUrl", "")
                 urn = entity.get("entityUrn", "")
                 public_id = nav_url.split("/in/")[-1].split("?")[0].rstrip("/") if "/in/" in nav_url else ""
+                badge_obj = entity.get("badgeText") or {}
+                badge = badge_obj.get("text", "") if isinstance(badge_obj, dict) else ""
                 results.append({
                     "name": title,
                     "headline": subtitle,
@@ -455,6 +485,7 @@ class LinkedinClient:
                     "public_id": public_id,
                     "urn_id": urn,
                     "url": nav_url.split("?")[0] if nav_url else "",
+                    "connection_degree": badge,
                 })
         return results
 
@@ -836,18 +867,38 @@ class LinkedinClient:
         )
 
     def get_invitations(self, limit=25) -> list:
-        results = []
+        from datetime import datetime, timezone
+        raw_results = []
         page_size = min(limit, 49)
         start = 0
         while start < limit:
             count = min(page_size, limit - start)
             data = self._api_get(f"/relationships/invitationViews?start={start}&count={count}")
             page = data.get("elements", [])
-            results.extend(page)
+            raw_results.extend(page)
             if len(page) < count:
                 break
             start += len(page)
-        return results[:limit]
+
+        normalized = []
+        for inv in raw_results[:limit]:
+            from_member = inv.get("fromMember", {})
+            fn = from_member.get("firstName", "")
+            ln = from_member.get("lastName", "")
+            headline = from_member.get("occupation", "") or from_member.get("headline", "")
+            pub_id = from_member.get("publicIdentifier", "")
+            sent_ts = inv.get("sentTime", 0)
+            sent_time = datetime.fromtimestamp(sent_ts / 1000, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") if sent_ts else ""
+            normalized.append({
+                "name": f"{fn} {ln}".strip(),
+                "headline": headline,
+                "profile_id": pub_id,
+                "message": inv.get("message", ""),
+                "entity_urn": inv.get("entityUrn", ""),
+                "shared_secret": inv.get("sharedSecret", ""),
+                "sent_time": sent_time,
+            })
+        return normalized
 
     def add_connection(self, profile_public_id: str, message="", profile_urn=None):
         import base64
@@ -923,6 +974,19 @@ class LinkedinClient:
 
     def search_people(self, keywords=None, limit=25, **kwargs) -> list:
         kw = keywords or ""
+        # Merge keyword-based filters into the keywords string
+        for k in ("keyword_company", "keyword_title", "keyword_school"):
+            if kwargs.get(k):
+                kw = f"{kw} {kwargs[k]}".strip()
+
+        # Build dynamic queryParameters
+        qp_parts = ["resultType:List(PEOPLE)"]
+        if kwargs.get("network_depths"):
+            qp_parts.append(f"network:List({','.join(kwargs['network_depths'])})")
+        if kwargs.get("regions"):
+            qp_parts.append(f"geoUrn:List({','.join(kwargs['regions'])})")
+        qp_str = ",".join(qp_parts)
+
         results = []
         page_size = min(limit, 49)
         start = 0
@@ -932,7 +996,7 @@ class LinkedinClient:
                 f"/search/dash/clusters?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175"
                 f"&origin=GLOBAL_SEARCH_HEADER&q=all&start={start}&count={count}"
                 f"&query=(keywords:{kw},flagshipSearchIntent:SEARCH_SRP"
-                f",queryParameters:(resultType:List(PEOPLE)))"
+                f",queryParameters:({qp_str}))"
             )
             page = self._extract_search_results(data)
             results.extend(page)
@@ -982,6 +1046,11 @@ class LinkedinClient:
             "return posts;"
         )
         posts = self.driver.execute_script(script) or []
+        # Enrich with timestamps and URLs
+        for p in posts:
+            urn = p.get("urn", "")
+            p["posted_at"] = _urn_to_timestamp(urn)
+            p["post_url"] = f"https://www.linkedin.com/feed/update/{urn}/" if urn else ""
         return posts[:limit]
 
     def follow_company(self, public_id: str = None, following_state_urn: str = None, following: bool = True):
@@ -1233,13 +1302,16 @@ class LinkedinClient:
                 if activity_id in seen:
                     continue
                 seen.add(activity_id)
+                urn = f"urn:li:activity:{activity_id}" if activity_id else ""
                 all_posts.append({
                     "author": p["author"],
                     "text": p["text"],
                     "reactions": p["reactions"],
                     "comments": p["comments"],
                     "activity_id": activity_id,
-                    "urn": f"urn:li:activity:{activity_id}" if activity_id else "",
+                    "urn": urn,
+                    "posted_at": _urn_to_timestamp(activity_id) if activity_id else "",
+                    "post_url": f"https://www.linkedin.com/feed/update/{urn}/" if urn else "",
                 })
 
             if len(all_posts) >= limit:
@@ -1541,10 +1613,31 @@ class LinkedinClient:
                 ts = el.get("publishedAt", 0)
                 date_str = datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d %H:%M") if ts else ""
 
+                # Extract notification URN and action URL
+                notif_urn = el.get("entityUrn", "")
+                action_url = el.get("navigationUrl", "")
+
+                # Extract actor info if available
+                actor_name = ""
+                actor_profile_id = ""
+                actors = el.get("actors", [])
+                if actors and isinstance(actors, list):
+                    first_actor = actors[0] if actors else {}
+                    if isinstance(first_actor, dict):
+                        a_name = first_actor.get("name") or {}
+                        actor_name = a_name.get("text", "") if isinstance(a_name, dict) else str(a_name)
+                        a_nav = first_actor.get("navigationUrl", "")
+                        if "/in/" in a_nav:
+                            actor_profile_id = a_nav.split("/in/")[-1].split("?")[0].rstrip("/")
+
                 all_notifs.append({
                     "headline": h_text,
                     "date": date_str,
                     "read": read,
+                    "notification_urn": notif_urn,
+                    "action_url": action_url,
+                    "actor_name": actor_name,
+                    "actor_profile_id": actor_profile_id,
                 })
 
             start += len(elements)
@@ -1552,6 +1645,69 @@ class LinkedinClient:
                 break
 
         return all_notifs[:limit]
+
+    def get_post_engagers(self, post_urn: str, limit: int = 50) -> list:
+        """Get combined reactions + comments with deduplication by profileId."""
+        if not post_urn.startswith("urn:"):
+            post_urn = f"urn:li:activity:{post_urn}"
+
+        reactions = self.get_post_reactions(post_urn=post_urn, limit=limit)
+        comments = self.get_post_comments(post_urn=post_urn, limit=limit)
+
+        seen = {}
+        merged = []
+
+        for r in reactions:
+            pid = r.get("profileId", "")
+            if pid and pid not in seen:
+                seen[pid] = len(merged)
+                merged.append({
+                    "name": r.get("name", ""),
+                    "headline": r.get("headline", ""),
+                    "profileId": pid,
+                    "profileUrl": r.get("profileUrl", ""),
+                    "interaction_type": "reaction",
+                })
+
+        for c in comments:
+            pid = c.get("profileId", "")
+            if pid and pid in seen:
+                merged[seen[pid]]["interaction_type"] = "both"
+            elif pid:
+                seen[pid] = len(merged)
+                merged.append({
+                    "name": c.get("author", ""),
+                    "headline": "",
+                    "profileId": pid,
+                    "profileUrl": c.get("profileUrl", ""),
+                    "interaction_type": "comment",
+                })
+
+        return merged[:limit]
+
+    def get_signals(self, recent_post_urns: list = None, limit: int = 5) -> dict:
+        """Aggregate daily signals: profile views, post engagers, invitations, notifications."""
+        signals = {}
+
+        # Profile views
+        signals["profile_views"] = self.get_current_profile_views()
+
+        # Post engagers for recent posts
+        engagers = []
+        for urn in (recent_post_urns or [])[:3]:
+            post_engagers = self.get_post_engagers(post_urn=urn, limit=limit)
+            for e in post_engagers:
+                e["post_urn"] = urn
+            engagers.extend(post_engagers)
+        signals["post_engagers"] = engagers
+
+        # Invitations
+        signals["invitations"] = self.get_invitations(limit=limit)
+
+        # Unread notifications
+        signals["notifications"] = self.get_notifications(limit=limit, unread_only=True)
+
+        return signals
 
     def quit(self):
         """Close the browser and clean up temp profile."""

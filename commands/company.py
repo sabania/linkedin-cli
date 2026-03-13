@@ -11,11 +11,17 @@ console = Console()
 @app.command()
 def show(
     public_id: str = typer.Argument(..., help="Company public ID (URL slug)"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Show company details."""
     from auth import get_client
     api = get_client()
     company = api.get_company(public_id=public_id)
+
+    if json_output:
+        from commands import output_json
+        output_json(company)
+        return
 
     table = Table(title=f"Company: {public_id}")
     table.add_column("Field", style="cyan")
@@ -44,11 +50,17 @@ def show(
 def updates(
     public_id: str = typer.Argument(..., help="Company public ID"),
     limit: int = typer.Option(25, "--limit", "-n", help="Max results"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Show recent company updates/posts."""
     from auth import get_client
     api = get_client()
     result = api.get_company_updates(public_id=public_id, limit=limit)
+
+    if json_output:
+        from commands import output_json
+        output_json(result)
+        return
 
     if not result:
         console.print("[dim]No updates found.[/dim]")
@@ -59,7 +71,8 @@ def updates(
         urn = update.get("urn", "")
         rx = update.get("reactions", "0")
         cm = update.get("comments", "0")
-        console.print(f"[bold cyan]Update {i}[/bold cyan]")
+        posted_at = update.get("posted_at", "")
+        console.print(f"[bold cyan]Update {i}[/bold cyan]  [dim]{posted_at}[/dim]")
         console.print(text[:300] if text else "[dim]No text[/dim]")
         console.print(f"Reactions: {rx} | Comments: {cm}")
         console.print(f"[dim]{urn}[/dim]")

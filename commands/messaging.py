@@ -11,23 +11,31 @@ console = Console()
 @app.command("list")
 def list_conversations(
     limit: int = typer.Option(25, "--limit", "-n", help="Number of conversations"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """List recent conversations."""
     from auth import get_client
     api = get_client()
     convos = api.get_conversations(limit=limit)
 
+    if json_output:
+        from commands import output_json
+        output_json(convos)
+        return
+
     table = Table(title="Conversations")
     table.add_column("Participants", style="green")
     table.add_column("Last Message")
     table.add_column("Date", style="dim")
+    table.add_column("Conversation URN", style="cyan")
 
     for convo in convos:
         name = convo.get("participants", "")
         last_msg = convo.get("lastMessage", "")[:80] if isinstance(convo.get("lastMessage"), str) else ""
         date = convo.get("date", "")
+        conv_urn = convo.get("conversationUrn", "")
 
-        table.add_row(name, last_msg, date)
+        table.add_row(name, last_msg, date, conv_urn)
 
     console.print(table)
 
@@ -35,11 +43,17 @@ def list_conversations(
 @app.command()
 def read(
     name: str = typer.Argument(..., help="Participant name to find conversation"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Read messages in a conversation by participant name."""
     from auth import get_client
     api = get_client()
     messages = api.get_conversation(name=name)
+
+    if json_output:
+        from commands import output_json
+        output_json(messages)
+        return
 
     if not messages:
         console.print(f"[yellow]No conversation found for '{name}'[/yellow]")

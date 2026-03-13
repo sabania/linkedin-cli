@@ -249,6 +249,15 @@ class TestSearch:
         results = api.search_people(keywords="software engineer", limit=3)
         assert isinstance(results, list)
 
+    def test_search_people_has_degree(self, api):
+        results = api.search_people(keywords="software", limit=3)
+        if results:
+            assert "connection_degree" in results[0]
+
+    def test_search_people_network_filter(self, api):
+        results = api.search_people(keywords="", network_depths=["F"], limit=3)
+        assert isinstance(results, list)
+
     def test_search_posts(self, api):
         results = api.search_posts(keywords="AI", limit=3)
         assert isinstance(results, list)
@@ -257,6 +266,11 @@ class TestSearch:
         results = api.search_posts(keywords="python", limit=3)
         if results:
             assert any(p.get("text") or p.get("activity_id") for p in results)
+
+    def test_search_posts_has_posted_at(self, api):
+        results = api.search_posts(keywords="AI", limit=3)
+        if results:
+            assert any(p.get("posted_at") for p in results)
 
     def test_search_groups(self, api):
         results = api.search_groups(keywords="python", limit=3)
@@ -285,6 +299,12 @@ class TestNotifications:
         result = api.get_notifications(limit=5)
         if result:
             assert any(n.get("headline") for n in result)
+
+    def test_notification_has_enriched_fields(self, api):
+        result = api.get_notifications(limit=3)
+        if result:
+            assert "notification_urn" in result[0]
+            assert "actor_name" in result[0]
 
 
 # ──────────────────────────────────────────────
@@ -335,3 +355,88 @@ class TestJobs:
     def test_search_jobs(self, api):
         jobs = api.search_jobs(keywords="python", limit=3)
         assert isinstance(jobs, list)
+
+
+# ──────────────────────────────────────────────
+# Data Enrichment
+# ──────────────────────────────────────────────
+
+class TestPostedAt:
+    def test_profile_posts_have_posted_at(self, my_posts):
+        assert "posted_at" in my_posts[0]
+        assert my_posts[0]["posted_at"]
+
+    def test_profile_posts_have_post_url(self, my_posts):
+        assert "post_url" in my_posts[0]
+        assert "linkedin.com" in my_posts[0]["post_url"]
+
+    def test_profile_posts_have_shares(self, my_posts):
+        assert "shares" in my_posts[0]
+
+    def test_feed_posts_have_posted_at(self, api):
+        posts = api.get_feed_posts(limit=2)
+        if posts:
+            assert posts[0].get("posted_at")
+
+    def test_feed_posts_have_author_profile_id(self, api):
+        posts = api.get_feed_posts(limit=3)
+        assert any(p.get("author_profile_id") for p in posts)
+
+    def test_feed_posts_have_shares(self, api):
+        posts = api.get_feed_posts(limit=2)
+        if posts:
+            assert "shares" in posts[0]
+
+    def test_snowflake_decode(self):
+        from linkedin_wrapper import _urn_to_timestamp
+        ts = _urn_to_timestamp("7435982583777169408")
+        assert ts
+        assert "20" in ts  # year should be 20XX
+
+
+class TestInvitationNormalization:
+    def test_invitations_have_name(self, api):
+        invs = api.get_invitations(limit=3)
+        if invs:
+            assert "name" in invs[0]
+            assert "headline" in invs[0]
+
+    def test_invitations_have_shared_secret(self, api):
+        invs = api.get_invitations(limit=3)
+        if invs:
+            assert "shared_secret" in invs[0]
+            assert "entity_urn" in invs[0]
+
+
+# ──────────────────────────────────────────────
+# Post Engagers
+# ──────────────────────────────────────────────
+
+class TestPostEngagers:
+    def test_returns_list(self, api, first_post_urn):
+        if not first_post_urn:
+            pytest.skip("No posts found")
+        result = api.get_post_engagers(post_urn=first_post_urn, limit=5)
+        assert isinstance(result, list)
+
+    def test_has_interaction_type(self, api, first_post_urn):
+        if not first_post_urn:
+            pytest.skip("No posts found")
+        result = api.get_post_engagers(post_urn=first_post_urn, limit=5)
+        if result:
+            assert result[0].get("interaction_type") in ("reaction", "comment", "both")
+
+
+# ──────────────────────────────────────────────
+# Signals
+# ──────────────────────────────────────────────
+
+class TestSignals:
+    def test_returns_dict(self, api, first_post_urn):
+        urns = [first_post_urn] if first_post_urn else []
+        result = api.get_signals(recent_post_urns=urns, limit=2)
+        assert isinstance(result, dict)
+        assert "profile_views" in result
+        assert "post_engagers" in result
+        assert "invitations" in result
+        assert "notifications" in result

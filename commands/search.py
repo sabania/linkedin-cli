@@ -17,6 +17,7 @@ def people(
     location: str = typer.Option(None, "--location", "-l", help="Region filter"),
     network: str = typer.Option(None, "--network", "-n", help="Network depth: F(irst), S(econd), O(ther)"),
     limit: int = typer.Option(25, "--limit", help="Max results"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Search for people on LinkedIn."""
     from auth import get_client
@@ -38,10 +39,16 @@ def people(
 
     results = api.search_people(**kwargs, limit=limit)
 
+    if json_output:
+        from commands import output_json
+        output_json(results)
+        return
+
     table = Table(title=f"People Search ({len(results)} results)")
     table.add_column("Name", style="green")
     table.add_column("Headline")
     table.add_column("Location", style="dim")
+    table.add_column("Degree", style="yellow", width=5)
     table.add_column("Public ID", style="cyan")
 
     for person in results:
@@ -49,6 +56,7 @@ def people(
             person.get("name", ""),
             (person.get("headline", "") or "")[:50],
             person.get("location", ""),
+            person.get("connection_degree", ""),
             person.get("public_id", ""),
         )
 
@@ -59,11 +67,17 @@ def people(
 def companies(
     keywords: str = typer.Argument(..., help="Search keywords"),
     limit: int = typer.Option(25, "--limit", "-n", help="Max results"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Search for companies."""
     from auth import get_client
     api = get_client()
     results = api.search_companies(keywords=[keywords], limit=limit)
+
+    if json_output:
+        from commands import output_json
+        output_json(results)
+        return
 
     table = Table(title=f"Company Search ({len(results)} results)")
     table.add_column("Name", style="green")
@@ -93,6 +107,7 @@ def posts(
     posted_by: str = typer.Option(None, "--posted-by", help="me, first (1st connections), or following"),
     mentioning: str = typer.Option(None, "--mentioning", help="Member URN"),
     limit: int = typer.Option(10, "--limit", "-n", help="Max results (~3 per page load)"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Search for posts/content with filters.
 
@@ -110,19 +125,27 @@ def posts(
         posted_by=posted_by, mentioning=mentioning,
     )
 
+    if json_output:
+        from commands import output_json
+        output_json(results)
+        return
+
     table = Table(title=f"Post Search ({len(results)} results)")
     table.add_column("#", style="dim", width=3)
     table.add_column("Author", style="green", width=20)
-    table.add_column("Text", width=55)
+    table.add_column("Text", width=45)
+    table.add_column("Posted", style="dim", width=11)
     table.add_column("Rx", style="yellow", justify="right", width=6)
     table.add_column("Cm", style="yellow", justify="right", width=6)
     table.add_column("Activity ID", style="cyan", width=20)
 
     for i, p in enumerate(results, 1):
+        posted = p.get("posted_at", "")[:10]  # date only
         table.add_row(
             str(i),
             p.get("author", ""),
-            p.get("text", "")[:100],
+            p.get("text", "")[:80],
+            posted,
             p.get("reactions", "0"),
             p.get("comments", "0"),
             p.get("activity_id", ""),
@@ -135,11 +158,17 @@ def posts(
 def groups(
     keywords: str = typer.Argument(..., help="Search keywords"),
     limit: int = typer.Option(25, "--limit", "-n", help="Max results"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Search for groups."""
     from auth import get_client
     api = get_client()
     results = api.search_groups(keywords=keywords, limit=limit)
+
+    if json_output:
+        from commands import output_json
+        output_json(results)
+        return
 
     table = Table(title=f"Group Search ({len(results)} results)")
     table.add_column("Name", style="green")
@@ -160,11 +189,17 @@ def groups(
 def events(
     keywords: str = typer.Argument(..., help="Search keywords"),
     limit: int = typer.Option(25, "--limit", "-n", help="Max results"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Search for events."""
     from auth import get_client
     api = get_client()
     results = api.search_events(keywords=keywords, limit=limit)
+
+    if json_output:
+        from commands import output_json
+        output_json(results)
+        return
 
     table = Table(title=f"Event Search ({len(results)} results)")
     table.add_column("Name", style="green")
@@ -189,6 +224,7 @@ def jobs(
     remote: str = typer.Option(None, "--remote", "-r", help="1=onsite, 2=remote, 3=hybrid"),
     job_type: str = typer.Option(None, "--type", "-t", help="F=full, C=contract, P=part, T=temp, I=intern, V=volunteer"),
     limit: int = typer.Option(25, "--limit", "-n", help="Max results"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Search for jobs."""
     from auth import get_client
@@ -207,6 +243,11 @@ def jobs(
         kwargs["job_type"] = [job_type]
 
     results = api.search_jobs(**kwargs, limit=limit)
+
+    if json_output:
+        from commands import output_json
+        output_json(results)
+        return
 
     table = Table(title=f"Job Search ({len(results)} results)")
     table.add_column("Title", style="green")

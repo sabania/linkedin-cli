@@ -12,6 +12,7 @@ console = Console()
 @app.command()
 def show(
     post_urn: str = typer.Argument(..., help="Post URN or activity ID"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Show a single post with full details."""
     from auth import get_client
@@ -20,6 +21,11 @@ def show(
         post_urn = f"urn:li:activity:{post_urn}"
 
     post = api.get_post(post_urn=post_urn)
+
+    if json_output:
+        from commands import output_json
+        output_json(post)
+        return
 
     if not post:
         console.print("[red]Post not found.[/red]")
@@ -57,6 +63,7 @@ def show(
 def comments(
     post_urn: str = typer.Argument(..., help="Post URN or activity ID (e.g. 7435982583777169408)"),
     limit: int = typer.Option(50, "--limit", "-n", help="Number of comments"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Show comments on a post with author profiles."""
     from auth import get_client
@@ -66,6 +73,11 @@ def comments(
         post_urn = f"urn:li:activity:{post_urn}"
 
     result = api.get_post_comments(post_urn=post_urn, limit=limit)
+
+    if json_output:
+        from commands import output_json
+        output_json(result)
+        return
 
     if not result:
         console.print("[dim]No comments found.[/dim]")
@@ -92,6 +104,7 @@ def comments(
 def reactions(
     post_urn: str = typer.Argument(..., help="Post URN or activity ID"),
     limit: int = typer.Option(50, "--limit", "-n", help="Number of reactions"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Show who reacted to a post with their profiles."""
     from auth import get_client
@@ -100,6 +113,11 @@ def reactions(
         post_urn = f"urn:li:activity:{post_urn}"
 
     result = api.get_post_reactions(post_urn=post_urn, limit=limit)
+
+    if json_output:
+        from commands import output_json
+        output_json(result)
+        return
 
     if not result:
         console.print("[dim]No reactions found.[/dim]")
@@ -125,6 +143,7 @@ def reactions(
 @app.command()
 def analytics(
     post_urn: str = typer.Argument(..., help="Post URN or activity ID"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Show post analytics (impressions, reach, demographics)."""
     from auth import get_client
@@ -133,6 +152,11 @@ def analytics(
         post_urn = f"urn:li:activity:{post_urn}"
 
     result = api.get_post_analytics(post_urn=post_urn)
+
+    if json_output:
+        from commands import output_json
+        output_json(result)
+        return
 
     if not result or "error" in result:
         console.print(f"[red]{result.get('error', 'No analytics data found.')}[/red]")
@@ -173,3 +197,45 @@ def analytics(
             demo.add_section()
 
         console.print(demo)
+
+
+@app.command()
+def engagers(
+    post_urn: str = typer.Argument(..., help="Post URN or activity ID"),
+    limit: int = typer.Option(50, "--limit", "-n", help="Max engagers"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
+):
+    """Show who engaged with a post (reactions + comments combined)."""
+    from auth import get_client
+    api = get_client()
+    if not post_urn.startswith("urn:"):
+        post_urn = f"urn:li:activity:{post_urn}"
+
+    result = api.get_post_engagers(post_urn=post_urn, limit=limit)
+
+    if json_output:
+        from commands import output_json
+        output_json(result)
+        return
+
+    if not result:
+        console.print("[dim]No engagers found.[/dim]")
+        return
+
+    table = Table(title=f"Engagers ({len(result)})")
+    table.add_column("#", style="dim", width=3)
+    table.add_column("Name", style="green", width=25)
+    table.add_column("Headline", width=40)
+    table.add_column("Interaction", style="yellow", width=10)
+    table.add_column("Profile ID", style="cyan", width=25)
+
+    for i, e in enumerate(result, 1):
+        table.add_row(
+            str(i),
+            e.get("name", ""),
+            (e.get("headline", "") or "")[:40],
+            e.get("interaction_type", ""),
+            e.get("profileId", ""),
+        )
+
+    console.print(table)

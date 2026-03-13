@@ -11,24 +11,32 @@ console = Console()
 @app.command()
 def invitations(
     limit: int = typer.Option(25, "--limit", "-n"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Show pending invitations."""
     from auth import get_client
     api = get_client()
     result = api.get_invitations(limit=limit)
 
+    if json_output:
+        from commands import output_json
+        output_json(result)
+        return
+
     table = Table(title="Pending Invitations")
     table.add_column("From", style="green")
+    table.add_column("Headline", width=40)
     table.add_column("Message")
-    table.add_column("URN", style="dim")
+    table.add_column("Entity URN", style="dim")
+    table.add_column("Secret", style="cyan", width=12)
 
     for inv in result:
-        from_member = inv.get("fromMember", {})
-        name = f"{from_member.get('firstName', '')} {from_member.get('lastName', '')}"
         table.add_row(
-            name,
-            inv.get("message", "")[:60],
-            inv.get("entityUrn", ""),
+            inv.get("name", ""),
+            (inv.get("headline", "") or "")[:40],
+            (inv.get("message", "") or "")[:60],
+            inv.get("entity_urn", ""),
+            inv.get("shared_secret", "")[:12],
         )
 
     console.print(table)

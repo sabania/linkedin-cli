@@ -13,11 +13,17 @@ console = Console()
 @app.command()
 def show(
     username: str = typer.Argument(..., help="LinkedIn public profile ID"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Show a LinkedIn profile."""
     from auth import get_client
     api = get_client()
     profile = api.get_profile(public_id=username)
+
+    if json_output:
+        from commands import output_json
+        output_json(profile)
+        return
 
     table = Table(title=f"Profile: {username}")
     table.add_column("Field", style="cyan")
@@ -37,11 +43,17 @@ def show(
 @app.command()
 def contact(
     username: str = typer.Argument(..., help="LinkedIn public profile ID"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Show contact info for a profile."""
     from auth import get_client
     api = get_client()
     info = api.get_profile_contact_info(public_id=username)
+
+    if json_output:
+        from commands import output_json
+        output_json(info)
+        return
 
     table = Table(title=f"Contact: {username}")
     table.add_column("Field", style="cyan")
@@ -63,11 +75,17 @@ def contact(
 @app.command()
 def skills(
     username: str = typer.Argument(..., help="LinkedIn public profile ID"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """List skills of a profile."""
     from auth import get_client
     api = get_client()
     result = api.get_profile_skills(public_id=username)
+
+    if json_output:
+        from commands import output_json
+        output_json(result)
+        return
 
     table = Table(title=f"Skills: {username}")
     table.add_column("#", style="dim")
@@ -82,11 +100,17 @@ def skills(
 @app.command()
 def experiences(
     username: str = typer.Argument(..., help="LinkedIn public profile ID"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """List experiences of a profile."""
     from auth import get_client
     api = get_client()
     result = api.get_profile_experiences(public_id=username)
+
+    if json_output:
+        from commands import output_json
+        output_json(result)
+        return
 
     if not result:
         console.print("[dim]No experiences found.[/dim]")
@@ -109,11 +133,17 @@ def experiences(
 def connections(
     username: str = typer.Argument(..., help="LinkedIn public profile ID"),
     limit: int = typer.Option(50, "--limit", "-n", help="Max connections to fetch"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """List connections of a profile."""
     from auth import get_client
     api = get_client()
     result = api.get_profile_connections(public_id=username, max_results=limit)
+
+    if json_output:
+        from commands import output_json
+        output_json(result)
+        return
 
     table = Table(title="Connections")
     table.add_column("Name", style="green")
@@ -135,11 +165,17 @@ def connections(
 def posts(
     username: str = typer.Argument(..., help="LinkedIn public profile ID"),
     limit: int = typer.Option(25, "--limit", "-n", help="Number of posts"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """List posts from a profile."""
     from auth import get_client
     api = get_client()
     result = api.get_profile_posts(public_id=username, limit=limit)
+
+    if json_output:
+        from commands import output_json
+        output_json(result)
+        return
 
     if not result:
         console.print("[dim]No posts found.[/dim]")
@@ -147,11 +183,13 @@ def posts(
 
     for i, post in enumerate(result, 1):
         text = post.get("text", "")
-        console.print(f"[bold cyan]Post {i}[/bold cyan]")
+        posted_at = post.get("posted_at", "")
+        console.print(f"[bold cyan]Post {i}[/bold cyan]  [dim]{posted_at}[/dim]")
         console.print(text[:300] if text else "[dim]No text[/dim]")
         console.print(
             f"[dim]Reactions: {post.get('reactions', '0')} | "
-            f"Comments: {post.get('comments', '0')}[/dim]"
+            f"Comments: {post.get('comments', '0')} | "
+            f"Shares: {post.get('shares', '0')}[/dim]"
         )
         if post.get("urn"):
             console.print(f"[dim]URN: {post['urn']}[/dim]")
@@ -159,11 +197,18 @@ def posts(
 
 
 @app.command()
-def views():
+def views(
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
+):
     """Show who viewed your profile."""
     from auth import get_client
     api = get_client()
     result = api.get_current_profile_views()
+
+    if json_output:
+        from commands import output_json
+        output_json(result)
+        return
 
     table = Table(title="Profile Views")
     table.add_column("Name", style="green")
@@ -199,11 +244,17 @@ def views():
 @app.command()
 def network(
     username: str = typer.Argument(..., help="LinkedIn public profile ID"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Show network info for a profile."""
     from auth import get_client
     api = get_client()
     profile = api.get_profile(public_id=username)
+
+    if json_output:
+        from commands import output_json
+        output_json({"followers": profile.get("followerCount"), "connections": profile.get("connectionCount")})
+        return
 
     table = Table(title=f"Network: {username}")
     table.add_column("Metric", style="cyan")

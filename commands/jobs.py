@@ -11,11 +11,17 @@ console = Console()
 @app.command()
 def show(
     job_id: str = typer.Argument(..., help="Job ID"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Show job details."""
     from auth import get_client
     api = get_client()
     job = api.get_job(job_id=job_id)
+
+    if json_output:
+        from commands import output_json
+        output_json(job)
+        return
 
     table = Table(title=f"Job: {job_id}")
     table.add_column("Field", style="cyan")
@@ -50,11 +56,17 @@ def show(
 @app.command()
 def skills(
     job_id: str = typer.Argument(..., help="Job ID"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Show required skills for a job."""
     from auth import get_client
     api = get_client()
     result = api.get_job_skills(job_id=job_id)
+
+    if json_output:
+        from commands import output_json
+        output_json(result)
+        return
 
     if not result:
         console.print("[dim]No skills found for this job.[/dim]")
