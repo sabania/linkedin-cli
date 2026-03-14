@@ -7,7 +7,7 @@
     {
       "name": "linkedin-commander",
       "version": "3.0.3",
-      "description": "9 AI Agents als Marketing-Team: Content-Strategie, Post-Analyse, Lead-Generierung, Competitor-Tracking. Delta-basierte Pipeline mit Human-in-the-Loop.",
+      "description": "9 AI agents as a marketing team: content strategy, post analysis, lead generation, competitor tracking. Delta-based pipeline with human-in-the-loop.",
       "source": "./plugin"
     }
   ]

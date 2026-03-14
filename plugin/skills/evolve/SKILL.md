@@ -1,6 +1,6 @@
 ---
 name: evolve
-description: "Content-Strategie weiterentwickeln. Orchestriert strategy-evolver Agent. Human-Gate für neue Versionen. Wöchentlich bei Weekly Review oder on-demand."
+description: "Evolve content strategy. Orchestrates strategy-evolver agent. Human gate for new versions. Weekly during Weekly Review or on-demand."
 user-invocable: true
 allowed-tools:
   - Bash
@@ -10,68 +10,68 @@ allowed-tools:
   - Agent
 ---
 
-# /evolve — Strategie weiterentwickeln
+# /evolve — Evolve Strategy
 
-Entwickelt die Content-Strategie basierend auf Patterns, ICP-Daten, Competitor-Insights und Performance-Trends.
+Evolves the content strategy based on patterns, ICP data, competitor insights, and performance trends.
 
-**WICHTIG: Delegiere die Arbeit an den `strategy-evolver` Agent. Mach NICHTS selbst — starte den Agent mit dem `Agent`-Tool. Der Agent schlägt vor, der Mensch bestätigt.**
+**IMPORTANT: Delegate the work to the `strategy-evolver` agent. Do NOTHING yourself — start the agent with the `Agent` tool. The agent proposes, the human decides.**
 
-## Verwendung
+## Usage
 
 ```
-/evolve              # Vollständige Strategy-Evolution
-/evolve check        # Nur prüfen ob Update nötig (kein Vorschlag)
+/evolve              # Full strategy evolution
+/evolve check        # Only check if update is needed (no proposal)
 ```
 
-## Ablauf
+## Workflow
 
-1. **`strategy-evolver` Agent** starten (opus-Modell — der Head of Strategy)
+1. **Start `strategy-evolver` agent** (opus model — the Head of Strategy)
 
-2. **Agent analysiert:**
-   - Neue Patterns seit letztem Evolve
-   - ICP-Delta (Soll vs. Ist Audience)
-   - Competitor-Learnings
-   - Pillar-Balance (Ist vs. Soll)
-   - KPI-Trends aus Reports
+2. **Agent analyzes:**
+   - New patterns since last evolve
+   - ICP delta (target vs. actual audience)
+   - Competitor learnings
+   - Pillar balance (actual vs. target)
+   - KPI trends from reports
 
-3. **Ergebnis präsentieren:**
-   - Was hat sich geändert seit letztem Evolve
-   - Welche Patterns sind neu/bestätigt/deprecated
-   - Empfehlung: Strategy-Update nötig? (ja/nein mit Begründung)
+3. **Present result:**
+   - What has changed since last evolve
+   - Which patterns are new/confirmed/deprecated
+   - Recommendation: Strategy update needed? (yes/no with reasoning)
 
-4. **Falls Update empfohlen — Diff zeigen:**
+4. **If update recommended — show diff:**
    ```
-   Strategy v1.2 → v1.3 (Vorschlag)
+   Strategy v1.2 → v1.3 (Proposal)
 
-   ÄNDERUNGEN:
-   + "Question hooks boost comments 2x" → Bewährte Patterns
-   + Dienstag + Donnerstag als beste Tage → Posting-Plan
-   - "Video-Format" → Vermeiden (Disproven, Sample: 8)
-   ~ AI Praxis: 40% → 50% (stärkstes Pillar)
-   ~ Behind the Scenes: 20% → 15% (unterperformt)
+   CHANGES:
+   + "Question hooks boost comments 2x" → Proven Patterns
+   + Tuesday + Thursday as best days → Posting Plan
+   - "Video format" → Avoid (Disproven, Sample: 8)
+   ~ AI Praxis: 40% → 50% (strongest pillar)
+   ~ Behind the Scenes: 20% → 15% (underperforming)
 
-   BEGRÜNDUNG:
-   - 3 neue High-Confidence Patterns
-   - ICP-Delta: 60% Developers statt CTOs → mehr Educational Content
-   - Competitor-Gap: "Team Leadership" Thema unbesetzt
+   REASONING:
+   - 3 new High-Confidence patterns
+   - ICP delta: 60% Developers instead of CTOs → more Educational content
+   - Competitor gap: "Team Leadership" topic uncovered
 
-   Soll ich diese Strategie aktivieren? [Ja/Nein]
+   Should I activate this strategy? [Yes/No]
    ```
 
-5. **Human-Gate:**
-   - **User bestätigt** → Alte Strategy archivieren, neue aktivieren, CLAUDE.md updaten
-   - **User lehnt ab** → Aktuelle Strategy bleibt, Feedback dokumentieren
-   - **User modifiziert** → Anpassungen einarbeiten, nochmal vorlegen
+5. **Human Gate:**
+   - **User confirms** → Archive old strategy, activate new one, update CLAUDE.md
+   - **User rejects** → Current strategy stays, document feedback
+   - **User modifies** → Incorporate adjustments, present again
 
 ## Session
 
-- Nach Evolve: `session.last_evolve_date` auf heute setzen
-- Bei Weekly Review: Wird automatisch nach `/report` aufgerufen
+- After evolve: Set `session.last_evolve_date` to today
+- During Weekly Review: Automatically called after `/report`
 
-## Regeln
+## Rules
 
-- **HUMAN-GATE** — nie ohne User-Bestätigung die aktive Strategie ändern
-- **Zeige die Diff** — was ändert sich von alt zu neu
-- **Empfehle Experimente** für Bereiche mit Low Confidence
-- **Konservativ** — v1.1 statt v2.0 (kleine Schritte)
-- **Evidenz-basiert** — keine Änderungen ohne Daten
+- **HUMAN GATE** — never change the active strategy without user confirmation
+- **Show the diff** — what changes from old to new
+- **Recommend experiments** for areas with Low Confidence
+- **Conservative** — v1.1 instead of v2.0 (small steps)
+- **Evidence-based** — no changes without data

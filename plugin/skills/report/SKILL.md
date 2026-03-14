@@ -1,6 +1,6 @@
 ---
 name: report
-description: Wöchentlichen Performance-Report erstellen mit KPIs, Trends und Insights.
+description: Create weekly performance report with KPIs, trends, and insights.
 user-invocable: true
 allowed-tools:
   - Bash
@@ -10,27 +10,27 @@ allowed-tools:
   - Agent
 ---
 
-# /report — Wochen-Report
+# /report — Weekly Report
 
-Erstellt einen wöchentlichen Performance-Report.
+Creates a weekly performance report.
 
-**WICHTIG: Delegiere die Arbeit an den `report-builder` Agent. Mach NICHTS selbst — starte den Agent mit dem `Agent`-Tool.**
+**IMPORTANT: Delegate the work to the `report-builder` agent. Do NOTHING yourself — start the agent with the `Agent` tool.**
 
-## Verwendung
+## Usage
 
 ```
-/report               # Report für aktuelle Woche
-/report last          # Report für letzte Woche
+/report               # Report for current week
+/report last          # Report for last week
 ```
 
-## Ablauf
+## Workflow
 
-1. **Daten aktualisieren** via `data-collector` Agent (aktuelle Zahlen holen)
-2. **Report erstellen** via `report-builder` Agent
-3. **Report anzeigen** und im Datenspeicher speichern
+1. **Update data** via `data-collector` agent (fetch current numbers)
+2. **Create report** via `report-builder` agent
+3. **Display report** and save in data store
 
-## Regeln
+## Rules
 
-- **Immer aktuelle Daten** — vor dem Report frische Zahlen holen
-- **Vergleichbar** — gleiches Format jede Woche
-- **Actionable Insights** — nicht nur Zahlen, auch Empfehlungen
+- **Always fresh data** — fetch current numbers before the report
+- **Comparable** — same format every week
+- **Actionable insights** — not just numbers, also recommendations

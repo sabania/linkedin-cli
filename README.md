@@ -8,15 +8,15 @@ Uses Selenium with a real Chrome browser under the hood, so LinkedIn's bot detec
 
 ## LinkedIn Commander Plugin
 
-Dieses Repo enthält auch das **LinkedIn Commander Plugin** — ein selbstlernendes Marketing-System mit 9 AI Agents als Marketing-Team. Es läuft auf Claude Code und nutzt die LinkedIn CLI als Datenquelle.
+This repo also contains the **LinkedIn Commander Plugin** — a self-learning marketing system with 9 AI agents as a marketing team. It runs on Claude Code and uses the LinkedIn CLI as data source.
 
-**Was es kann:** Content-Strategie, Post-Analyse, Lead-Generierung, Competitor-Tracking, Signal-Erkennung — alles delta-basiert mit Human-in-the-Loop. Du entscheidest, der Agent unterstützt.
+**What it does:** Content strategy, post analysis, lead generation, competitor tracking, signal detection — all delta-based with human-in-the-loop. You decide, the agent supports.
 
-> Komplette Plugin-Dokumentation: **[plugin/README.md](plugin/README.md)**
+> Full plugin documentation: **[plugin/README.md](plugin/README.md)**
 
-### Schnellstart (3 Schritte)
+### Quick Start (3 Steps)
 
-**1. LinkedIn CLI installieren + einloggen**
+**1. Install LinkedIn CLI + Log in**
 ```bash
 # Windows
 irm https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.ps1 | iex
@@ -24,90 +24,90 @@ irm https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.ps1 | 
 # macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.sh | bash
 
-# Einloggen (einmalig)
+# Log in (one-time)
 linkedin-cli login
 ```
 
-**2. Plugin in Claude Code aktivieren**
+**2. Activate Plugin in Claude Code**
 ```bash
 # In Claude Code:
 claude --plugin-dir ./plugin
 
-# Oder über Marketplace:
+# Or via Marketplace:
 /plugin marketplace add sabania/linkedin-cli
 /plugin install linkedin-commander
 ```
 
-**3. Setup starten**
+**3. Start Setup**
 ```
 /setup
 ```
-Das wars. Der Setup-Wizard führt dich durch alles:
-- Deine Ziele und Zielgruppe definieren
-- Bestehende Posts automatisch analysieren (Baseline + erste Patterns)
-- Top-Engager als Contacts erfassen
-- Competitors analysieren
-- Strategie v1.0 erstellen
+That's it. The setup wizard guides you through everything:
+- Define your goals and target audience
+- Automatically analyze existing posts (baseline + initial patterns)
+- Capture top engagers as contacts
+- Analyze competitors
+- Create strategy v1.0
 
-Das System startet **warmgelaufen** — nicht leer.
+The system starts **warmed up** — not empty.
 
-### Danach: Täglicher Workflow
-
-```
-/auto                    # Morning Check — was ist seit gestern passiert?
-```
-
-Du bekommst:
-- Wer hat mit deinen Posts interagiert (Namen, nicht nur Zahlen)
-- Wie performen deine aktiven Posts
-- Neue Signals (Job-Wechsel, Hot Contacts, Keyword-Mentions)
-- Feed-Trends und Comment-Opportunities
-- Fällige Follow-ups
-- Was du heute tun solltest
-
-### Content erstellen
+### After That: Daily Workflow
 
 ```
-/ideas 5                 # 5 Content-Ideen basierend auf Patterns + Trends
-/draft <thema>           # Post schreiben (Brand Voice + bewährte Patterns)
-/draft comment <urn>     # Strategischen Kommentar auf fremden Post schreiben
+/auto                    # Morning Check — what happened since yesterday?
 ```
 
-### Performance tracken
+You get:
+- Who interacted with your posts (names, not just numbers)
+- How your active posts are performing
+- New signals (job changes, hot contacts, keyword mentions)
+- Feed trends and comment opportunities
+- Due follow-ups
+- What you should do today
+
+### Create Content
 
 ```
-/analyze <urn>           # Einzelnen Post analysieren
-/report                  # Wochen-Report mit KPIs und Trends
-/evolve                  # Strategie basierend auf Learnings weiterentwickeln
+/ideas 5                 # 5 content ideas based on patterns + trends
+/draft <topic>           # Write post (brand voice + proven patterns)
+/draft comment <urn>     # Write strategic comment on someone else's post
+```
+
+### Track Performance
+
+```
+/analyze <urn>           # Analyze single post
+/report                  # Weekly report with KPIs and trends
+/evolve                  # Evolve strategy based on learnings
 ```
 
 ### Contacts & Competitors
 
 ```
-/contacts hot            # Deine wertvollsten Kontakte
-/contacts follow-up      # Fällige Follow-ups
-/outreach <name>         # Personalisierte Nachricht generieren
-/competitor <name>       # Wettbewerber analysieren
-/check                   # Quick Status (kein API-Call, sofort)
+/contacts hot            # Your most valuable contacts
+/contacts follow-up      # Due follow-ups
+/outreach <name>         # Generate personalized message
+/competitor <name>       # Analyze competitor
+/check                   # Quick status (no API call, instant)
 ```
 
 ### Dashboard
 
-Öffne `plugin/dashboard.html` im Browser — interaktives Dashboard das dein Excel live liest. Posts, Contacts, Signals, Patterns, Competitors — alles auf einen Blick.
+Open `plugin/dashboard.html` in your browser — interactive dashboard that reads your Excel live. Posts, Contacts, Signals, Patterns, Competitors — all at a glance.
 
-### Wie es lernt
+### How It Learns
 
 ```
-Du postest → System misst → Patterns erkennen → Strategie anpassen → bessere Posts
+You post → System measures → Detect patterns → Adapt strategy → Better posts
 ```
 
-Mit jedem Post wird das System schlauer. Der `strategy-evolver` Agent (das "Gehirn") analysiert wöchentlich was funktioniert und schlägt Strategie-Updates vor — du bestätigst oder lehnst ab.
+With every post, the system gets smarter. The `strategy-evolver` agent (the "brain") weekly analyzes what works and proposes strategy updates — you confirm or reject.
 
-### Wichtig
+### Important
 
-- **Der Agent postet NIE für dich** — er schreibt Drafts, du postest manuell
-- **Kein Spam** — Outreach-Nachrichten nur mit deiner Bestätigung
-- **Deine Daten bleiben lokal** — alles in einem Excel-File auf deinem Rechner
+- **The agent NEVER posts for you** — it writes drafts, you post manually
+- **No spam** — outreach messages only with your confirmation
+- **Your data stays local** — everything in an Excel file on your machine
 
 ---
 
@@ -130,19 +130,19 @@ irm https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.ps1 | 
 curl -fsSL https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.sh | bash
 ```
 
-Installiert nach `~/.local/share/linkedin-cli` (Unix) bzw. `%LOCALAPPDATA%\linkedin-cli` (Windows) und fügt es automatisch zum PATH hinzu. Danach Terminal neu starten.
+Installs to `~/.local/share/linkedin-cli` (Unix) or `%LOCALAPPDATA%\linkedin-cli` (Windows) and automatically adds it to PATH. Restart terminal afterwards.
 
 ### Manual Install
 
-Download ZIP von [Releases](../../releases), entpacken und Verzeichnis manuell zum PATH hinzufügen:
+Download ZIP from [Releases](../../releases), extract and manually add directory to PATH:
 
-| OS | Datei |
-|----|-------|
+| OS | File |
+|----|------|
 | Windows | `linkedin-cli-windows.zip` |
 | macOS | `linkedin-cli-macos.tar.gz` |
 | Linux | `linkedin-cli-linux.tar.gz` |
 
-### From Source (Entwickler)
+### From Source (Developers)
 
 ```bash
 git clone https://github.com/sabania/linkedin-cli.git
@@ -166,19 +166,19 @@ curl -fsSL https://raw.githubusercontent.com/sabania/linkedin-cli/master/install
 ## Quick Start
 
 ```bash
-# 1. Login — öffnet Chrome, du loggst dich ein, CLI speichert Session automatisch
+# 1. Login — opens Chrome, you log in, CLI saves session automatically
 linkedin-cli login
 
-# 2. Prüfen ob es geklappt hat
+# 2. Verify it worked
 linkedin-cli whoami
 
-# 3. Loslegen
+# 3. Get started
 linkedin-cli feed list -n 5
-linkedin-cli profile posts <dein-public-id> -n 3
+linkedin-cli profile posts <your-public-id> -n 3
 linkedin-cli search people "software engineer" --limit 5
 ```
 
-Login muss nur einmal gemacht werden. Session-Cookies werden unter `~/.linkedin-cli/cookies.json` gespeichert.
+Login only needs to be done once. Session cookies are stored at `~/.linkedin-cli/cookies.json`.
 
 ## CLI Commands
 
@@ -326,8 +326,8 @@ linkedin-cli/
 │   │   └── plugin.json
 │   ├── agents/             # 9 AI Agents
 │   ├── skills/             # 12 Skills/Commands
-│   ├── dashboard.html      # Interaktives Dashboard
-│   ├── README.md           # Plugin-Dokumentation
+│   ├── dashboard.html      # Interactive dashboard
+│   ├── README.md           # Plugin documentation
 │   └── LICENSE
 ├── tests/
 ├── requirements.txt

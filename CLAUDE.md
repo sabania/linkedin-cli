@@ -1,86 +1,86 @@
 # LinkedIn Command Center v3
 
-Selbstlernendes LinkedIn-Management-System. 9 AI Agents als kohärentes Marketing-Team. Delta-basierte Pipeline. Der Mensch entscheidet — der Agent analysiert und unterstützt.
+Self-learning LinkedIn management system. 9 AI agents as a cohesive marketing team. Delta-based pipeline. The human decides — the agent analyzes and supports.
 
 ## Setup
 
-**Erstmalige Einrichtung:** `/setup` ausführen — Deep Onboarding mit 5 Phasen (Interview + historische Analyse + Contact Seed + Competitor Deep-Dives + gefüllter Datenspeicher).
+**First-time setup:** Run `/setup` — deep onboarding with 5 phases (interview + historical analysis + contact seed + competitor deep-dives + populated data store).
 
-Prüfe ob `config.json` existiert. Falls nicht, führe `/setup` aus.
+Check if `config.json` exists. If not, run `/setup`.
 
-**Setup-Optionen:**
-- `/setup` — Deep Onboarding (System startet warmgelaufen)
-- `/setup reset` — Bestehende Config überschreiben
-- `/setup validate` — Nur Config prüfen, nichts ändern
+**Setup options:**
+- `/setup` — Deep onboarding (system starts warmed up)
+- `/setup reset` — Overwrite existing config
+- `/setup validate` — Only check config, change nothing
 
-## Konfiguration laden
+## Loading Configuration
 
-**WICHTIG:** Vor allen Operationen `config.json` laden:
+**IMPORTANT:** Load `config.json` before all operations:
 
 ```
-config.json enthält:
-- linkedin.username → LinkedIn API Aufrufe
-- session.last_session_date → Delta-Berechnung
-- lifecycle.active_days / cooling_days → Post-Lifecycle
-- content.pillars → Content-Strategie
+config.json contains:
+- linkedin.username → LinkedIn API calls
+- session.last_session_date → Delta calculation
+- lifecycle.active_days / cooling_days → Post lifecycle
+- content.pillars → Content strategy
 - icp → Ideal Customer Profile
-- tracking.format / file → Datenspeicher-Zugriff
+- tracking.format / file → Data store access
 ```
 
-## Datenstruktur
+## Data Structure
 
-### Datenspeicher (10 Sheets)
+### Data Store (10 Sheets)
 
-| Sheet | Zweck |
-|-------|-------|
-| Posts (33 Spalten) | Content-Lifecycle + Metriken + Lifecycle (Active/Cooling/Archived) |
-| Contacts (23) | LinkedIn-Kontakte mit Warm Score + ICP Match |
-| Patterns (14) | Erkannte Erfolgsmuster mit Confidence |
-| Strategy (5) | Versionierte Content-Strategie (Active/Archived) |
-| Reports (16) | Wöchentliche Performance-Reports |
-| Competitors (18) | Wettbewerber-Tracking |
-| Signals (11) | Trigger-Events und Opportunities |
-| Feed Insights (14) | Feed-Analyse, Trends, Comment-Opportunities |
-| ICP Profile (7) | Ideal Customer Profile (wird geschärft) |
-| Comment Tracking (9) | Strategische Kommentare |
+| Sheet | Purpose |
+|-------|---------|
+| Posts (33 columns) | Content lifecycle + metrics + lifecycle (Active/Cooling/Archived) |
+| Contacts (23) | LinkedIn contacts with Warm Score + ICP Match |
+| Patterns (14) | Detected success patterns with confidence |
+| Strategy (5) | Versioned content strategy (Active/Archived) |
+| Reports (16) | Weekly performance reports |
+| Competitors (18) | Competitor tracking |
+| Signals (11) | Trigger events and opportunities |
+| Feed Insights (14) | Feed analysis, trends, comment opportunities |
+| ICP Profile (7) | Ideal Customer Profile (sharpened over time) |
+| Comment Tracking (9) | Strategic comments |
 
-### Post-Lifecycle (orthogonal zu Status)
+### Post Lifecycle (orthogonal to Status)
 
-| Phase | Tage | API-Last |
+| Phase | Days | API Load |
 |-------|------|----------|
-| Active | 0-7 | Analytics bei jedem /auto |
-| Cooling | 7-14 | Letzter Snapshot |
-| Archived | 14+ | Null (nie wieder angefasst) |
+| Active | 0-7 | Analytics on every /auto |
+| Cooling | 7-14 | Final snapshot |
+| Archived | 14+ | None (never touched again) |
 
-### Lokale Dateien
+### Local Files
 
-| Pfad | Zweck |
-|------|-------|
-| `config.json` | Zentrale Konfiguration + Session-State |
-| `linkedin-data.xlsx` | Datenspeicher (oder CSV/JSON/SQLite) |
-| `drafts/` | Post-Entwürfe (.md) |
-| `plugin/dashboard.html` | Interaktives Dashboard (liest Excel live via SheetJS) |
+| Path | Purpose |
+|------|---------|
+| `config.json` | Central configuration + session state |
+| `linkedin-data.xlsx` | Data store (or CSV/JSON/SQLite) |
+| `drafts/` | Post drafts (.md) |
+| `plugin/dashboard.html` | Interactive dashboard (reads Excel live via SheetJS) |
 
 ## Commands
 
-| Command | Zweck |
-|---------|-------|
-| `/setup` | Deep Onboarding: 5-Phasen Setup mit historischer Analyse |
-| `/auto` | Morning Check: 3-Stage Delta-Pipeline (Collect → Enrich → Detect) |
-| `/check` | Quick Status: nur lokale Daten, kein API |
-| `/ideas [n]` | Content-Ideen generieren (8 Quellen) |
-| `/draft <thema>` | Post oder Kommentar schreiben |
-| `/analyze [urn]` | Post-Performance analysieren (Lifecycle-aware) |
-| `/evolve` | Strategie weiterentwickeln (Human-Gate) |
-| `/report` | Wochen-Report erstellen |
-| `/competitor <name>` | Wettbewerber analysieren (Delta-basiert) |
-| `/contacts [arg]` | Kontakte verwalten + Network Health |
-| `/outreach <name>` | Personalisierte Nachricht generieren |
+| Command | Purpose |
+|---------|---------|
+| `/setup` | Deep onboarding: 5-phase setup with historical analysis |
+| `/auto` | Morning Check: 3-stage delta pipeline (Collect → Enrich → Detect) |
+| `/check` | Quick status: local data only, no API |
+| `/ideas [n]` | Generate content ideas (8 sources) |
+| `/draft <topic>` | Write post or comment |
+| `/analyze [urn]` | Analyze post performance (lifecycle-aware) |
+| `/evolve` | Evolve strategy (human gate) |
+| `/report` | Create weekly report |
+| `/competitor <name>` | Analyze competitor (delta-based) |
+| `/contacts [arg]` | Manage contacts + network health |
+| `/outreach <name>` | Generate personalized message |
 
-## Agents (Marketing-Team)
+## Agents (Marketing Team)
 
-| Agent | Rolle | Model | Pipeline |
-|-------|-------|-------|----------|
+| Agent | Role | Model | Pipeline |
+|-------|------|-------|----------|
 | data-collector | Data Analyst | haiku | Daily Stage 1: COLLECT |
 | contact-scanner | Community Manager | sonnet | Daily Stage 2: ENRICH |
 | signal-detector | Intelligence Officer | sonnet | Daily Stage 3a: DETECT |
@@ -91,16 +91,16 @@ config.json enthält:
 | content-writer | Content Creator | sonnet | On-demand |
 | competitor-analyst | Market Researcher | sonnet | On-demand |
 
-## Kernregeln
+## Core Rules
 
-1. **Delta-basiert** — nur neue Daten seit `session.last_session_date`
-2. **Notifications first** — 1 API-Call = 80% der Deltas
-3. **Lifecycle respektieren** — Archived Posts nie anfassen
-4. **Config laden** vor jeder Operation
-5. **Aktive Strategy laden** vor Content-Erstellung
-6. **Patterns updaten** nach Analysen
-7. **NIE posten, senden, kommentieren** — Mensch handelt, Agent unterstützt
-8. **Human-Gate** bei Strategie-Änderungen
+1. **Delta-based** — only new data since `session.last_session_date`
+2. **Notifications first** — 1 API call = 80% of deltas
+3. **Respect lifecycle** — never touch archived posts
+4. **Load config** before every operation
+5. **Load active strategy** before content creation
+6. **Update patterns** after analyses
+7. **NEVER post, send, or comment** — human acts, agent supports
+8. **Human gate** for strategy changes
 
 ## Learning Loop
 
@@ -108,11 +108,11 @@ config.json enthält:
 CREATE → PUBLISH → MEASURE → ANALYZE → LEARN → ADAPT → CREATE
 ```
 
-strategy-evolver ist das Gehirn. Ohne ihn lernt das System nicht.
+strategy-evolver is the brain. Without it, the system doesn't learn.
 
-## Cron-Jobs (extern)
+## Cron Jobs (external)
 
-| Job | Frequenz | Was |
-|-----|----------|-----|
-| Morning Check | Täglich ~08:00 | `/auto` |
-| Weekly Review | Sonntag ~20:00 | `/report` + `/evolve` |
+| Job | Frequency | What |
+|-----|-----------|------|
+| Morning Check | Daily ~08:00 | `/auto` |
+| Weekly Review | Sunday ~20:00 | `/report` + `/evolve` |

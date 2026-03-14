@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Deep Onboarding für LinkedIn Commander. Interview + historische Post-Analyse + Contact Seed + Competitor Deep-Dives + System-Generierung. Das System startet "warmgelaufen", nicht leer.
+description: Deep onboarding for LinkedIn Commander. Interview + historical post analysis + contact seed + competitor deep dives + system generation. The system starts "warmed up", not empty.
 user-invocable: true
 allowed-tools:
   - Bash
@@ -15,99 +15,99 @@ allowed-tools:
 
 # /setup — Deep Onboarding
 
-Du bist der Setup-Assistent für LinkedIn Commander. Dein Job: User interviewen UND das System mit echten Daten füllen. Nach dem Setup ist das System "warmgelaufen" — der erste `/auto`-Run arbeitet mit Deltas, nicht von Null.
+You are the setup assistant for LinkedIn Commander. Your job: interview the user AND fill the system with real data. After setup, the system is "warmed up" — the first `/auto` run works with deltas, not from scratch.
 
-**Gesprächsstil:**
-- Conversational, nicht wie ein Formular
-- Fasse Antworten zusammen und bestätige bevor du weitermachst
-- Überspringe Fragen die sich aus dem Kontext ergeben
-- Schlage Defaults vor wenn der User unsicher ist
-- Gruppiere verwandte Fragen — nicht jede einzeln stellen
+**Conversation style:**
+- Conversational, not like a form
+- Summarize answers and confirm before moving on
+- Skip questions that can be inferred from context
+- Suggest defaults when the user is unsure
+- Group related questions — don't ask each one individually
 
-**Argumente:**
-- `/setup` — Normales Onboarding
-- `/setup reset` — Bestehende config.json überschreiben
-- `/setup validate` — Nur prüfen ob alles konfiguriert ist, nichts ändern
+**Arguments:**
+- `/setup` — Normal onboarding
+- `/setup reset` — Overwrite existing config.json
+- `/setup validate` — Only check if everything is configured, change nothing
 
 ---
 
 ## Phase 1: Interview
 
-### Schritt 0: Prüfe bestehende Konfiguration
+### Step 0: Check existing configuration
 
 ```
-Prüfe ob config.json im CWD existiert.
-- Falls ja: Frage ob der User die Konfiguration aktualisieren oder neu starten will.
-- Falls nein: Starte das Interview.
+Check if config.json exists in CWD.
+- If yes: Ask if the user wants to update the configuration or start fresh.
+- If no: Start the interview.
 ```
 
-### Schritt 1: Begrüssung & Kontext
+### Step 1: Welcome & Context
 
-> Willkommen bei LinkedIn Commander! Ich stelle dir ein paar Fragen und analysiere dann dein bestehendes Profil. Das System startet danach mit echten Daten — nicht leer. Los geht's!
+> Welcome to LinkedIn Commander! I'll ask you a few questions and then analyze your existing profile. The system will start with real data — not empty. Let's go!
 
-### Schritt 2: Ziele & Motivation
+### Step 2: Goals & Motivation
 
-1. **Was willst du mit LinkedIn erreichen?**
-   - Thought Leadership / Expertise zeigen
-   - Leads / Kunden gewinnen
-   - Recruiting / Talent anziehen
-   - Brand Awareness / Sichtbarkeit
+1. **What do you want to achieve with LinkedIn?**
+   - Thought Leadership / Show expertise
+   - Leads / Win customers
+   - Recruiting / Attract talent
+   - Brand Awareness / Visibility
    - Networking / Community
-   - Mehrere davon? Priorität?
+   - Multiple? Priority?
 
-2. **Wie ist dein aktueller LinkedIn-Stand?**
-   - Postest du schon regelmässig?
-   - Wie viele Follower/Connections ungefähr?
-   - Was funktioniert gut, was nicht?
+2. **What's your current LinkedIn status?**
+   - Do you post regularly?
+   - How many followers/connections approximately?
+   - What works well, what doesn't?
 
-### Schritt 3: ICP — Ideal Customer Profile
+### Step 3: ICP — Ideal Customer Profile
 
-3. **Wer ist deine Zielgruppe?**
-   - Welche Job-Titel/Rollen willst du erreichen?
-   - Welche Branchen?
-   - Welches Seniority-Level?
-   - Welche Region?
-   - Welche Firmengrösse?
+3. **Who is your target audience?**
+   - Which job titles/roles do you want to reach?
+   - Which industries?
+   - Which seniority level?
+   - Which region?
+   - Which company size?
 
-→ Daraus wird das initiale ICP erstellt (wird über Zeit aus Engagement-Daten geschärft).
+→ This creates the initial ICP (refined over time from engagement data).
 
-### Schritt 4: Content-Strategie
+### Step 4: Content Strategy
 
-4. **Über welche Themen willst du posten?**
-   → 3-5 Content-Pillars definieren mit optionaler Gewichtung
+4. **What topics do you want to post about?**
+   → Define 3-5 content pillars with optional weighting
 
-5. **In welcher Sprache?** DE, EN, beides, andere
+5. **In which language?** DE, EN, both, other
 
-6. **Wie oft willst du posten?** Täglich, 3x/Woche, wöchentlich
+6. **How often do you want to post?** Daily, 3x/week, weekly
 
-7. **Welcher Ton passt zu dir?**
-   - Professionell, locker, educational, provokant, storytelling, technisch...
-   - Gibt es LinkedIn-Accounts deren Stil du magst? (→ als Referenz speichern)
+7. **What tone fits you?**
+   - Professional, casual, educational, provocative, storytelling, technical...
+   - Are there LinkedIn accounts whose style you like? (→ save as reference)
 
-### Schritt 5: Competitors
+### Step 5: Competitors
 
-8. **Willst du Wettbewerber tracken?**
-   - Falls ja: 1-5 LinkedIn Usernames eingeben
-   - System validiert jeden via `linkedin-cli profile show <id> --json`
+8. **Do you want to track competitors?**
+   - If yes: Enter 1-5 LinkedIn usernames
+   - System validates each via `linkedin-cli profile show <id> --json`
 
-### Schritt 6: Signal-Konfiguration
+### Step 6: Signal Configuration
 
-9. **Welche Keywords willst du monitoren?** (3-10 Keywords)
+9. **Which keywords do you want to monitor?** (3-10 keywords)
 
-10. **Wie aggressiv soll das Signal-System sein?**
-    - Konservativ: Nur High-Priority (max 3/Tag)
-    - Normal: High + Medium (max 10/Tag)
-    - Alles: Alle Signals zeigen
+10. **How aggressive should the signal system be?**
+    - Conservative: Only high priority (max 3/day)
+    - Normal: High + Medium (max 10/day)
+    - Everything: Show all signals
 
-### Schritt 7: Tracking & Umgebung
+### Step 7: Tracking & Environment
 
-11. **Welches Tracking-Format?** Excel (.xlsx, Default), CSV, JSON, SQLite
+11. **Which tracking format?** Excel (.xlsx, default), CSV, JSON, SQLite
 
-12. **LinkedIn CLI prüfen/installieren**
+12. **Check/install LinkedIn CLI**
     ```bash
     linkedin-cli --help 2>/dev/null
     ```
-    Falls nicht gefunden — automatisch installieren je nach Umgebung:
+    If not found — install automatically based on environment:
 
     **Windows (PowerShell):**
     ```bash
@@ -119,21 +119,21 @@ Prüfe ob config.json im CWD existiert.
     curl -fsSL https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.sh | bash
     ```
 
-    **From Source (falls pip verfügbar):**
+    **From source (if pip is available):**
     ```bash
     git clone https://github.com/sabania/linkedin-cli.git ~/.linkedin-cli-src
     cd ~/.linkedin-cli-src && pip install -r requirements.txt
     ```
 
-    → Nach Installation nochmal `linkedin-cli --help` prüfen. Falls PATH nicht aktuell, User auf Terminal-Neustart hinweisen.
+    → After installation, check `linkedin-cli --help` again. If PATH isn't updated, remind user to restart terminal.
 
 13. **LinkedIn Login**
     ```bash
     linkedin-cli whoami --json
     ```
-    → Username und Profil-URL aus Ergebnis extrahieren
+    → Extract username and profile URL from result
 
-14. **Runtimes prüfen**
+14. **Check runtimes**
     ```bash
     python --version 2>/dev/null || python3 --version 2>/dev/null
     node --version 2>/dev/null
@@ -141,41 +141,41 @@ Prüfe ob config.json im CWD existiert.
 
 ---
 
-## Phase 2: Historische Analyse (NEU — System startet warm)
+## Phase 2: Historical Analysis (system starts warm)
 
-**Ziel:** Bestehende Posts analysieren, Baseline berechnen, erste Patterns erkennen. Das System startet mit Daten, nicht leer.
+**Goal:** Analyze existing posts, calculate baseline, detect initial patterns. The system starts with data, not empty.
 
-### 2.1 Posts laden
+### 2.1 Load Posts
 
 ```bash
 linkedin-cli profile posts <username> --limit 30 --json
 ```
 
-→ Letzte 20-30 Posts laden
+→ Load last 20-30 posts
 
-### 2.2 Analytics pro Post
+### 2.2 Analytics per Post
 
-Für jeden Post mit URN:
+For each post with URN:
 ```bash
 linkedin-cli posts analytics <urn> --json
 ```
 
 → Impressions, Reactions, Comments, Demographics
 
-### 2.3 Klassifizierung
+### 2.3 Classification
 
-Für jeden Post automatisch bestimmen:
+For each post, automatically determine:
 - **Hook Type**: Statistics, Personal Story, Question, Surprising Fact, Contrarian, How-To, List, Problem-Solution, Behind-Scenes
 - **Format**: Text, Image, Video, Document, Carousel, Poll
 - **Content Type**: Educational, Case-Study, Opinion, Behind-Scenes, How-To, News-Commentary, Inspirational, Controversial
-- **Pillar**: Zuordnung zu den definierten Content-Pillars
+- **Pillar**: Assignment to defined content pillars
 - **CTA Type**: Question, Statement, Link, None
-- **Language**: DE, EN, andere
-- **Length Category**: Short/Medium/Long (berechnet aus Zeichenzahl)
+- **Language**: DE, EN, other
+- **Length Category**: Short/Medium/Long (calculated from character count)
 - **Has Personal Reference**: true/false
 - **Is Timely**: true/false
 
-### 2.4 Baseline berechnen
+### 2.4 Calculate Baseline
 
 ```python
 baseline = {
@@ -188,81 +188,81 @@ baseline = {
 }
 ```
 
-→ Baseline ist der Massstab für alle zukünftigen Vergleiche.
+→ Baseline is the benchmark for all future comparisons.
 
-### 2.5 Erste Patterns erkennen
+### 2.5 Detect Initial Patterns
 
-Analyse über alle klassifizierten Posts:
-- Welche Hook Types performen überdurchschnittlich?
-- Welche Formate?
-- Welche Tage/Zeiten?
-- Welche Content Types?
-- Welche Pillar-Themen?
-- Gibt es Kombinations-Patterns?
+Analysis across all classified posts:
+- Which hook types perform above average?
+- Which formats?
+- Which days/times?
+- Which content types?
+- Which pillar topics?
+- Are there combination patterns?
 
-→ Patterns mit Sample Size und Confidence erstellen (meist Low-Medium bei 20-30 Posts).
+→ Create patterns with sample size and confidence (usually Low-Medium with 20-30 posts).
 
-### 2.6 Repurposing-Kandidaten identifizieren
+### 2.6 Identify Repurposing Candidates
 
-Posts mit hoher Engagement Rate aber niedrigen Impressions = Repurposing-Kandidaten.
-→ In Notes vermerken.
+Posts with high engagement rate but low impressions = repurposing candidates.
+→ Note in Notes field.
 
-### 2.7 Lifecycle setzen
+### 2.7 Set Lifecycle
 
-Alle historischen Posts bekommen basierend auf Published Date:
-- Letzte 7 Tage → `Lifecycle: Active`
-- 7-14 Tage → `Lifecycle: Cooling`
-- 14+ Tage → `Lifecycle: Archived`, `Status: Analyzed`
+All historical posts get lifecycle based on published date:
+- Last 7 days → `Lifecycle: Active`
+- 7-14 days → `Lifecycle: Cooling`
+- 14+ days → `Lifecycle: Archived`, `Status: Analyzed`
 
 ---
 
-## Phase 3: Contact Seed (NEU)
+## Phase 3: Contact Seed
 
-**Ziel:** Top-Engager aus historischen Posts erfassen, ICP-Match bewerten, initiale Hot Contacts identifizieren.
+**Goal:** Capture top engagers from historical posts, evaluate ICP match, identify initial hot contacts.
 
-### 3.1 Engager laden
+### 3.1 Load Engagers
 
-Für die Top 10 Posts (nach Engagement Rate):
+For the top 10 posts (by engagement rate):
 ```bash
 linkedin-cli posts engagers <urn> --limit 50 --json
 ```
 
-### 3.2 Deduplizieren und anreichern
+### 3.2 Deduplicate and Enrich
 
-- Engager über alle Posts zusammenführen
-- Interaction Count berechnen (wie oft erscheint dieselbe Person)
-- Interaction Types sammeln (reaction, comment)
+- Merge engagers across all posts
+- Calculate interaction count (how often the same person appears)
+- Collect interaction types (reaction, comment)
 
-### 3.3 ICP-Match bewerten
+### 3.3 Evaluate ICP Match
 
-Für jeden Engager:
-- Headline/Title gegen ICP-Dimensionen matchen
-- Industry matchen
-- Seniority einschätzen
+For each engager:
+- Match headline/title against ICP dimensions
+- Match industry
+- Estimate seniority
 - Score: High, Medium, Low, None
 
-### 3.4 Warm Score berechnen
+### 3.4 Calculate Warm Score
 
-Initialer Warm Score basierend auf historischen Interactions:
+Initial Warm Score based on historical interactions:
 ```
-+10  pro Reaction auf eigenen Post
-+25  pro Kommentar auf eigenen Post
-+20  bei ICP Match (High)
-+10  bei ICP Match (Medium)
++10  per reaction on own post
++25  per comment on own post
++20  for ICP Match (High)
++10  for ICP Match (Medium)
 ```
 
-### 3.5 Hot Contacts identifizieren
+### 3.5 Identify Hot Contacts
 
-Contacts mit Warm Score >= 60 → Score: Hot
-→ Diese Personen sind die wertvollsten bestehenden Beziehungen.
+Contacts with Warm Score >= 60 → Score: Hot
+→ These are the most valuable existing relationships.
 
 ---
 
-## Phase 4: Competitor Deep-Dives (NEU)
+## Phase 4: Competitor Deep Dives
 
-**Nur wenn Competitors in Phase 1 definiert wurden.**
+**Only if competitors were defined in Phase 1.**
 
-### 4.1 Pro Competitor
+### 4.1 Per Competitor
 
 ```bash
 linkedin-cli profile show <competitor-id> --json
@@ -271,44 +271,44 @@ linkedin-cli profile posts <competitor-id> --limit 20 --json
 
 ### 4.2 Aggregation
 
-Pro Competitor berechnen:
+Per competitor, calculate:
 - Avg Reactions, Avg Comments, Avg Engagement Rate
-- Posting Frequency (Posts pro Woche)
+- Posting frequency (posts per week)
 - Top Format, Top Hook Type
-- Content Pillars (Themen-Mix)
+- Content Pillars (topic mix)
 
-### 4.3 Content-Gap-Analyse
+### 4.3 Content Gap Analysis
 
-Vergleich eigene Pillars vs. Competitor-Pillars:
-- Themen die Competitors haben, wir nicht → Content Gap
-- Themen die wir haben, Competitors nicht → Differenzierung
+Compare own pillars vs. competitor pillars:
+- Topics competitors cover that we don't → Content Gap
+- Topics we cover that competitors don't → Differentiation
 
-### 4.4 Shared-Engager-Identifikation
+### 4.4 Shared Engager Identification
 
 ```bash
 linkedin-cli posts engagers <competitor-post-urn> --limit 50 --json
 ```
 
-Cross-Reference mit unseren Contacts:
-- Personen die bei uns UND beim Competitor engagen → Shared Engagers
-- Zeigt überlappende Audience
+Cross-reference with our contacts:
+- People who engage with both us AND the competitor → Shared Engagers
+- Shows overlapping audience
 
 ---
 
-## Phase 5: Generierung
+## Phase 5: Generation
 
 ### 5.1 config.json
 
 ```json
 {
   "version": "3.0",
-  "created": "<heute>",
+  "created": "<today>",
 
   "linkedin": {
-    "username": "<aus whoami>",
-    "profileUrl": "<aus whoami>",
-    "fullName": "<aus whoami>",
-    "company": "<aus Profil>"
+    "username": "<from whoami>",
+    "profileUrl": "<from whoami>",
+    "fullName": "<from whoami>",
+    "company": "<from profile>"
   },
 
   "goals": ["thought-leadership", "lead-generation"],
@@ -361,10 +361,10 @@ Cross-Reference mit unseren Contacts:
   },
 
   "session": {
-    "last_session_date": "<jetzt ISO 8601>",
+    "last_session_date": "<now ISO 8601>",
     "last_report_date": null,
     "last_evolve_date": null,
-    "last_competitor_check": "<jetzt falls Competitors analysiert, sonst null>",
+    "last_competitor_check": "<now if competitors analyzed, else null>",
     "setup_completed": true,
     "posts_baseline_count": 23
   },
@@ -376,7 +376,7 @@ Cross-Reference mit unseren Contacts:
 }
 ```
 
-### 5.2 Datenspeicher erstellen (GEFÜLLT, nicht leer!)
+### 5.2 Create Data Store (FILLED, not empty!)
 
 ```python
 import openpyxl
@@ -384,61 +384,61 @@ wb = openpyxl.Workbook()
 wb.remove(wb.active)
 for sheet_name in config["tracking"]["sheets"]:
     ws = wb.create_sheet(sheet_name)
-    ws.append(HEADERS[sheet_name])  # Headers aus data-schema Skill
+    ws.append(HEADERS[sheet_name])  # Headers from data-schema skill
 wb.save(config["tracking"]["file"])
 ```
 
-Dann füllen mit Daten aus Phase 2-4:
-- **Posts**: 20-30 historische Posts mit allen berechneten Feldern + Lifecycle
-- **Contacts**: Seed aus Engagern mit Warm Score und ICP Match
-- **Patterns**: Erste erkannte Muster (Low-Medium Confidence)
-- **Competitors**: Deep-Dive-Daten (falls analysiert)
-- **ICP Profile**: Initiale Dimensionen aus Interview + erste Daten aus Demographics
-- **Strategy v1.0**: Erste Strategie basierend auf Interview + historischer Analyse
+Then fill with data from Phase 2-4:
+- **Posts**: 20-30 historical posts with all calculated fields + lifecycle
+- **Contacts**: Seed from engagers with Warm Score and ICP Match
+- **Patterns**: Initial detected patterns (Low-Medium Confidence)
+- **Competitors**: Deep dive data (if analyzed)
+- **ICP Profile**: Initial dimensions from interview + first data from demographics
+- **Strategy v1.0**: First strategy based on interview + historical analysis
 
-### 5.3 Strategy v1.0 erstellen
+### 5.3 Create Strategy v1.0
 
-Basierend auf Interview + historischer Analyse:
+Based on interview + historical analysis:
 
 ```markdown
-## Ziele
-<Aus Interview-Antworten>
+## Goals
+<From interview answers>
 
-## Zielgruppe (ICP)
-<Soll-ICP aus Interview + erste Ist-Daten aus Demographics>
+## Target Audience (ICP)
+<Target ICP from interview + first actual data from demographics>
 
-## Content-Pillars
-<Themen mit Gewichtung + erste Performance-Daten pro Pillar>
+## Content Pillars
+<Topics with weights + initial performance data per pillar>
 
-## Bewährte Patterns
-<Aus Phase 2.5 — mit Caveat "basierend auf N Posts">
+## Proven Patterns
+<From Phase 2.5 — with caveat "based on N posts">
 
-## Posting-Plan
-<Frequenz aus Interview + beste Tage/Zeiten aus historischen Daten>
+## Posting Plan
+<Frequency from interview + best days/times from historical data>
 
-## Nächste Hypothesen
-<Was als erstes getestet werden sollte>
+## Next Hypotheses
+<What should be tested first>
 
-## Vermeiden
-<Was historisch schlecht performt hat>
+## Avoid
+<What historically performed poorly>
 ```
 
-→ In Strategy-Sheet als v1.0, Status: Active
+→ In Strategy sheet as v1.0, Status: Active
 
-### 5.4 Ordner erstellen
+### 5.4 Create Folders
 
 ```bash
 mkdir -p drafts
 ```
 
-### 5.5 CLAUDE.md generieren
+### 5.5 Generate CLAUDE.md
 
-Erstelle ein CLAUDE.md im CWD. Die **Navigations-Karte** für Claude Code und alle Agents.
+Create a CLAUDE.md in CWD. The **navigation map** for Claude Code and all agents.
 
 ```markdown
 # LinkedIn Command Center — [User Name]
 
-[Personalisierte Beschreibung basierend auf Zielen]
+[Personalized description based on goals]
 
 ## Setup
 
@@ -446,45 +446,45 @@ Run `/setup` if config.json does not exist.
 
 ## Quick Reference
 
-| Was | Wo |
-|-----|-----|
-| Konfiguration | config.json |
-| Datenspeicher | [tracking.file] |
-| Post-Entwürfe | drafts/ |
-| Active Strategy | Datenspeicher → Strategy Sheet (Status=Active) |
-| Hot Contacts | Datenspeicher → Contacts Sheet (Score=Hot) |
-| Pending Signals | Datenspeicher → Signals Sheet (Status=New) |
+| What | Where |
+|------|-------|
+| Configuration | config.json |
+| Data Store | [tracking.file] |
+| Post Drafts | drafts/ |
+| Active Strategy | Data Store → Strategy Sheet (Status=Active) |
+| Hot Contacts | Data Store → Contacts Sheet (Score=Hot) |
+| Pending Signals | Data Store → Signals Sheet (Status=New) |
 
 ## Commands
 
-| Command | Zweck |
-|---------|-------|
-| /auto | Morning Check: Delta-Pipeline, Signals, Analytics, Feed |
-| /check | Quick-Status (lokal, kein API-Call) |
-| /ideas [n] | Content-Ideen generieren |
-| /draft <topic> | Neuen Post schreiben |
-| /analyze [urn] | Post-Performance analysieren |
-| /evolve | Strategie weiterentwickeln |
-| /report | Wochen-Report |
-| /competitor [name] | Wettbewerber analysieren |
-| /contacts [arg] | Kontakte & Leads verwalten |
-| /outreach <name> | Personalisierte Nachricht |
+| Command | Purpose |
+|---------|---------|
+| /auto | Morning Check: Delta pipeline, signals, analytics, feed |
+| /check | Quick status (local, no API call) |
+| /ideas [n] | Generate content ideas |
+| /draft <topic> | Write new post |
+| /analyze [urn] | Analyze post performance |
+| /evolve | Evolve strategy |
+| /report | Weekly report |
+| /competitor [name] | Analyze competitor |
+| /contacts [arg] | Manage contacts & leads |
+| /outreach <name> | Personalized message |
 
 ## Content Pillars
 
-[Generiert aus config.json → content.pillars]
+[Generated from config.json → content.pillars]
 
 ## ICP (Ideal Customer Profile)
 
-[Generiert aus config.json → icp]
+[Generated from config.json → icp]
 
 ## Core Rules
 
-1. Lade config.json vor jeder Operation
-2. Lade aktive Strategy vor Content-Erstellung
-3. Nach Analysen: Patterns prüfen und updaten
-4. Nie ohne User-Bestätigung posten oder Nachrichten senden
-5. Delta-basiert arbeiten: nur neue Daten seit last_session_date
+1. Load config.json before every operation
+2. Load active strategy before content creation
+3. After analyses: check and update patterns
+4. Never post or send messages without user confirmation
+5. Work delta-based: only new data since last_session_date
 
 ## Learning Loop
 
@@ -503,57 +503,57 @@ CREATE → PUBLISH → MEASURE → ANALYZE → LEARN → ADAPT → CREATE
 
 ---
 
-## Zusammenfassung an User
+## Summary to User
 
 ```
-Setup abgeschlossen! System ist warmgelaufen.
+Setup complete! System is warmed up.
 
-Profil: [Name] (@[username])
-Ziele: [Goals]
-ICP: [Top Titel] in [Branchen], [Region]
-Content: [n] Pillars, [Sprachen], [Frequenz]
-Tracking: [Format] ([Datei]) — [n] Sheets
+Profile: [Name] (@[username])
+Goals: [Goals]
+ICP: [Top titles] in [industries], [region]
+Content: [n] pillars, [languages], [frequency]
+Tracking: [Format] ([file]) — [n] sheets
 
-📊 Historische Analyse:
-  [n] Posts analysiert, Baseline berechnet
-  [n] Patterns erkannt (Low-Medium Confidence)
-  Bester Hook: [Top Hook Type]
-  Bester Tag: [Best Day]
+Historical Analysis:
+  [n] posts analyzed, baseline calculated
+  [n] patterns detected (Low-Medium Confidence)
+  Best hook: [Top Hook Type]
+  Best day: [Best Day]
 
-👥 Contacts:
-  [n] Engager erfasst
-  [n] Hot Contacts (Warm Score >= 60)
-  [n] ICP-Matches (High)
+Contacts:
+  [n] engagers captured
+  [n] hot contacts (Warm Score >= 60)
+  [n] ICP matches (High)
 
-🏆 Competitors:
-  [n] analysiert
+Competitors:
+  [n] analyzed
 
-🎯 Strategy v1.0 erstellt
+Strategy v1.0 created
 
-Nächste Schritte:
-1. /auto — Morning Check starten (Delta von jetzt)
-2. /ideas — Content-Ideen basierend auf Patterns
-3. /draft <thema> — Ersten Post schreiben
+Next steps:
+1. /auto — Start morning check (delta from now)
+2. /ideas — Content ideas based on patterns
+3. /draft <topic> — Write your first post
 ```
 
 ---
 
-## Besondere Fälle
+## Special Cases
 
-### User will wenig tracken
-- `tracking.sheets` enthält nur die gewählten Sheets
-- Agents die fehlende Sheets brauchen passen sich an (skippen statt crashen)
+### User wants minimal tracking
+- `tracking.sheets` contains only the chosen sheets
+- Agents that need missing sheets adapt (skip instead of crash)
 
-### User hat kein Python
-- Prüfe ob die linkedin-cli Binary Python mitliefert (PyInstaller → embedded Python)
-- Falls ja: Pfad zur embedded Python notieren in environment
-- Falls nein: Empfehle Installation oder nutze JSON/CSV Format
+### User has no Python
+- Check if the linkedin-cli binary ships Python (PyInstaller → embedded Python)
+- If yes: Note path to embedded Python in environment
+- If no: Recommend installation or use JSON/CSV format
 
-### User will kein Excel
-- Agents lesen `config.json` → `tracking.format` und passen ihre Scripts an
-- Schema bleibt gleich, nur Speicherformat ändert sich
+### User doesn't want Excel
+- Agents read `config.json` → `tracking.format` and adapt their scripts
+- Schema stays the same, only storage format changes
 
-### User hat keine historischen Posts
-- Phase 2 wird übersprungen
-- Baseline wird nach den ersten 5 Posts berechnet
-- System startet "kalt" — das ist okay, wird mit jedem Post besser
+### User has no historical posts
+- Phase 2 is skipped
+- Baseline is calculated after the first 5 posts
+- System starts "cold" — that's okay, it improves with every post

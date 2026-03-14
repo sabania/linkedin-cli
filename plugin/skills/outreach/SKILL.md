@@ -1,6 +1,6 @@
 ---
 name: outreach
-description: Personalisierte Outreach-Nachricht für einen LinkedIn-Kontakt generieren.
+description: Generate personalized outreach message for a LinkedIn contact.
 user-invocable: true
 allowed-tools:
   - Bash
@@ -10,36 +10,36 @@ allowed-tools:
   - Agent
 ---
 
-# /outreach — Outreach-Nachricht
+# /outreach — Outreach Message
 
-Generiert eine personalisierte Nachricht für einen LinkedIn-Kontakt.
+Generates a personalized message for a LinkedIn contact.
 
-**WICHTIG: Delegiere die Arbeit an den `content-writer` Agent. Mach NICHTS selbst — starte den Agent mit dem `Agent`-Tool und übergib den Kontakt-Namen/ID.**
+**IMPORTANT: Delegate the work to the `content-writer` agent. Do NOTHING yourself — start the agent with the `Agent` tool and pass the contact name/ID.**
 
-## Verwendung
+## Usage
 
 ```
-/outreach <name-oder-public-id>
+/outreach <name-or-public-id>
 ```
 
-## Ablauf
+## Workflow
 
-1. **Contact laden** aus Datenspeicher (Name oder Public ID)
-2. **`content-writer` Agent** starten im Outreach-Modus:
-   - Profil-Daten holen
-   - Gemeinsame Interaktion als Aufhänger
-   - Personalisierte Nachricht schreiben
-3. **Nachricht zeigen** — User entscheidet ob/wie senden
+1. **Load contact** from data store (name or public ID)
+2. **Start `content-writer` agent** in outreach mode:
+   - Fetch profile data
+   - Use shared interaction as conversation hook
+   - Write personalized message
+3. **Show message** — user decides whether/how to send
 
-## Nachricht-Typen
+## Message Types
 
-- **Connection Request** (max 300 Zeichen): Kurz, Bezug auf gemeinsame Interaktion
-- **Follow-up Message**: Längere Nachricht an bestehende Connection
-- **InMail**: Für Nicht-Connections (falls Premium)
+- **Connection Request** (max 300 characters): Short, reference shared interaction
+- **Follow-up Message**: Longer message to existing connection
+- **InMail**: For non-connections (if Premium)
 
-## Regeln
+## Rules
 
-- **Nie automatisch senden** — immer User-Bestätigung
-- **Kein Sales-Pitch** im ersten Kontakt
-- **Authentisch** — wie Brand Voice, persönlich
-- **Bezug herstellen** — warum schreibst du genau dieser Person?
+- **Never send automatically** — always get user confirmation
+- **No sales pitch** in first contact
+- **Authentic** — matches brand voice, personal
+- **Establish connection** — why are you writing to this specific person?

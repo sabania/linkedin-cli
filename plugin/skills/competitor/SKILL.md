@@ -1,6 +1,6 @@
 ---
 name: competitor
-description: Wettbewerber analysieren. Posts, Engagement, Content-Strategie auswerten und Learnings extrahieren.
+description: Analyze competitors. Evaluate posts, engagement, content strategy and extract learnings.
 user-invocable: true
 allowed-tools:
   - Bash
@@ -10,27 +10,27 @@ allowed-tools:
   - Agent
 ---
 
-# /competitor — Wettbewerber analysieren
+# /competitor — Analyze Competitor
 
-Analysiert einen LinkedIn-Wettbewerber.
+Analyzes a LinkedIn competitor.
 
-**WICHTIG: Delegiere die Arbeit an den `competitor-analyst` Agent. Mach NICHTS selbst — starte den Agent mit dem `Agent`-Tool und übergib den Username.**
+**IMPORTANT: Delegate the work to the `competitor-analyst` agent. Do NOTHING yourself — start the agent with the `Agent` tool and pass the username.**
 
-## Verwendung
+## Usage
 
 ```
-/competitor <username>    # Spezifischen Account analysieren
-/competitor               # Alle gespeicherten Competitors updaten
+/competitor <username>    # Analyze specific account
+/competitor               # Update all saved competitors
 ```
 
-## Ablauf
+## Workflow
 
-1. **`competitor-analyst` Agent** starten mit Username
-2. **Ergebnis anzeigen** und in Competitors-Sheet speichern
-3. **Vergleich mit eigenen Zahlen** zeigen
+1. **Start `competitor-analyst` agent** with username
+2. **Display result** and save in Competitors sheet
+3. **Show comparison** with own numbers
 
-## Regeln
+## Rules
 
-- **Öffentliche Daten only**
-- **Learnings in eigene Strategie** einbauen (via `/evolve`)
-- **Max 5-7 Competitors** aktiv tracken
+- **Public data only**
+- **Feed learnings into strategy** (via `/evolve`)
+- **Max 5-7 competitors** actively tracked

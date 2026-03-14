@@ -1,6 +1,6 @@
 ---
 name: ideas
-description: Content-Ideen aus 8 Quellen generieren. Feed Trends, Competitor Gaps, Repurposing, Patterns, News, Experiments, Audience Requests, User Input.
+description: Generate content ideas from 8 sources. Feed Trends, Competitor Gaps, Repurposing, Patterns, News, Experiments, Audience Requests, User Input.
 user-invocable: true
 allowed-tools:
   - Bash
@@ -11,74 +11,74 @@ allowed-tools:
   - WebSearch
 ---
 
-# /ideas — Ideen generieren
+# /ideas — Generate Ideas
 
-Generiert Content-Ideen aus 8 verschiedenen Quellen für maximale Vielfalt und Relevanz.
+Generates content ideas from 8 different sources for maximum variety and relevance.
 
-**WICHTIG: Delegiere die Arbeit an den `content-writer` Agent. Mach NICHTS selbst — starte den Agent mit dem `Agent`-Tool und übergib Anzahl + optionalen Pillar.**
+**IMPORTANT: Delegate the work to the `content-writer` agent. Do NOTHING yourself — start the agent with the `Agent` tool and pass the count + optional pillar.**
 
-## Verwendung
-
-```
-/ideas              # 5 Ideen aus allen Quellen (Default)
-/ideas 10           # 10 Ideen
-/ideas AI Praxis    # Ideen für spezifischen Pillar
-```
-
-## 8 Quellen
-
-1. **Feed Trends** — Was ist gerade hot im Feed?
-2. **Competitor Gaps** — Themen die Competitors bespielen, du nicht
-3. **Repurposing** — Guter alter Content neu aufbereitet
-4. **Pattern-Driven** — Ideas die bewährte Patterns nutzen
-5. **News/WebSearch** — Aktuelle Events in deiner Nische
-6. **Experiment-Driven** — Posts für laufende Experimente
-7. **Audience Requests** — Was deine Audience in Kommentaren fragt
-8. **User Input** — Dein Thema in verschiedene Angles
-
-## Ablauf
-
-1. **`content-writer` Agent** starten mit Anzahl und optionalem Pillar
-2. **Ideen präsentieren:**
+## Usage
 
 ```
-Content-Ideen (5):
+/ideas              # 5 ideas from all sources (default)
+/ideas 10           # 10 ideas
+/ideas AI Praxis    # Ideas for a specific pillar
+```
 
-1. 📈 "Die meisten AI-Projekte scheitern nicht an der Tech..."
+## 8 Sources
+
+1. **Feed Trends** — What's hot in the feed right now?
+2. **Competitor Gaps** — Topics competitors cover that you don't
+3. **Repurposing** — Good old content repackaged
+4. **Pattern-Driven** — Ideas that deliberately use proven patterns
+5. **News/WebSearch** — Current events in your niche
+6. **Experiment-Driven** — Posts for running experiments
+7. **Audience Requests** — What your audience asks in comments
+8. **User Input** — Your topic broken into different angles
+
+## Workflow
+
+1. **Start `content-writer` agent** with count and optional pillar
+2. **Present ideas:**
+
+```
+Content Ideas (5):
+
+1. 📈 "Most AI projects don't fail because of the technology..."
    Pillar: AI Praxis | Hook: Surprising Fact | Format: Text
-   Quelle: Feed Trend ("AI Agents" trending diese Woche)
-   Warum: Trending Topic + dein stärkster Pillar
+   Source: Feed Trend ("AI Agents" trending this week)
+   Why: Trending topic + your strongest pillar
 
-2. 🔄 "So habe ich in einem Wochenende einen CLI gebaut..."
+2. 🔄 "How I built a CLI in one weekend..."
    Pillar: Side Projects | Hook: Personal Story | Format: Carousel
-   Quelle: Repurpose (Original: URN:123, 89 Reactions aber nur 1.2k Impressions)
-   Warum: Guter Content verdient mehr Reach, Carousel = 3x Impressions (Pattern)
+   Source: Repurpose (Original: URN:123, 89 Reactions but only 1.2k Impressions)
+   Why: Good content deserves more reach, Carousel = 3x Impressions (Pattern)
 
-3. ❓ "Braucht ein 10-Personen-Team wirklich ein AI-Tool?"
+3. ❓ "Does a 10-person team really need an AI tool?"
    Pillar: AI Praxis | Hook: Question | Format: Text
-   Quelle: Experiment (hook-type-v1: Question-Variante, braucht noch 2 Posts)
-   Warum: Experiment läuft, Question-Hooks brauchen mehr Datenpunkte
+   Source: Experiment (hook-type-v1: Question variant, needs 2 more posts)
+   Why: Experiment running, question hooks need more data points
 
-4. 🏢 "Was Apostroph über AI-Übersetzung gelernt hat..."
+4. 🏢 "What Apostroph learned about AI translation..."
    Pillar: Behind the Scenes | Hook: Behind-Scenes | Format: Document
-   Quelle: Competitor Gap (@competitor-1 postet darüber, du nicht)
-   Warum: Content Gap schliessen, Behind-Scenes ist unterrepräsentiert
+   Source: Competitor Gap (@competitor-1 posts about it, you don't)
+   Why: Close content gap, Behind the Scenes is underrepresented
 
-5. 🌍 "OpenAI launched gerade... hier ist was das für KMUs bedeutet"
+5. 🌍 "OpenAI just launched... here's what it means for SMBs"
    Pillar: Industry News | Hook: News-Commentary | Format: Text
-   Quelle: News (WebSearch: aktuelle AI-Announcements)
-   Warum: Timely Content = hohe Reach
+   Source: News (WebSearch: current AI announcements)
+   Why: Timely content = high reach
 ```
 
-3. **User wählt:**
-   - Gut → Status "Approved" im Datenspeicher
-   - Nicht gut → Status "Rejected"
-   - Ändern → Idee anpassen
+3. **User chooses:**
+   - Good → Status "Approved" in data store
+   - Not good → Status "Rejected"
+   - Modify → Adjust idea
 
-## Regeln
+## Rules
 
-- **Vielfalt** — min. 2 Pillars, 2 Hook Types, 2 Formate
-- **Keine Duplikate** — gegen bestehende Posts/Ideas prüfen
-- **Datenbasiert** — jede Idee hat eine Begründung
-- **Pillar-Gewichtung** beachten (aus config)
-- **Experiment-bewusst** — wenn ein Experiment läuft, mindestens 1 passende Idee
+- **Variety** — min. 2 pillars, 2 hook types, 2 formats
+- **No duplicates** — check against existing posts/ideas
+- **Data-based** — every idea has a reasoning
+- **Respect pillar weights** (from config)
+- **Experiment-aware** — if an experiment is running, at least 1 matching idea

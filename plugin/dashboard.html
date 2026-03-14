@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -249,7 +249,7 @@
     <div class="header">
         <h1><span>LinkedIn</span> Command Center</h1>
         <div class="header-meta">
-            <span id="lastUpdated">Keine Daten geladen</span>
+            <span id="lastUpdated">No data loaded</span>
             &nbsp;|&nbsp;
             <label style="cursor:pointer; color: var(--accent);">
                 Excel laden <input type="file" id="fileInput" accept=".xlsx,.xls" />
@@ -274,7 +274,7 @@
             <h2>LinkedIn Command Center</h2>
             <p>Lade dein <code>linkedin-data.xlsx</code> um das Dashboard zu starten.</p>
             <label>
-                Excel-Datei auswählen
+                Select Excel file
                 <input type="file" id="fileInputMain" accept=".xlsx,.xls" />
             </label>
         </div>
@@ -289,7 +289,7 @@
                         <canvas id="engagementChart"></canvas>
                     </div>
                     <div class="table-container">
-                        <div class="table-header"><h3>Aktive Posts</h3></div>
+                        <div class="table-header"><h3>Active Posts</h3></div>
                         <table><thead id="activePostsHead"></thead><tbody id="activePostsBody"></tbody></table>
                     </div>
                 </div>
@@ -303,8 +303,8 @@
                         <table><thead><tr><th>Name</th><th>Score</th><th>ICP</th></tr></thead><tbody id="hotContactsBody"></tbody></table>
                     </div>
                     <div class="table-container">
-                        <div class="table-header"><h3>Follow-ups fällig</h3></div>
-                        <table><thead><tr><th>Name</th><th>Typ</th><th>Fällig</th></tr></thead><tbody id="followUpsBody"></tbody></table>
+                        <div class="table-header"><h3>Follow-ups Due</h3></div>
+                        <table><thead><tr><th>Name</th><th>Type</th><th>Due</th></tr></thead><tbody id="followUpsBody"></tbody></table>
                     </div>
                 </div>
             </div>
@@ -325,8 +325,8 @@
             </div>
             <div class="table-container">
                 <div class="table-header">
-                    <h3>Alle Posts</h3>
-                    <select id="postStatusFilter"><option value="">Alle Status</option></select>
+                    <h3>All Posts</h3>
+                    <select id="postStatusFilter"><option value="">All Statuses</option></select>
                 </div>
                 <table><thead id="postsHead"></thead><tbody id="postsBody"></tbody></table>
             </div>
@@ -336,7 +336,7 @@
         <div id="tab-contacts" class="tab-content">
             <div class="kpi-grid" id="contactKpis"></div>
             <div class="filters">
-                <button class="filter-btn active" data-filter="all">Alle</button>
+                <button class="filter-btn active" data-filter="all">All</button>
                 <button class="filter-btn" data-filter="Hot">Hot</button>
                 <button class="filter-btn" data-filter="Warm">Warm</button>
                 <button class="filter-btn" data-filter="Cold">Cold</button>
@@ -351,7 +351,7 @@
         <!-- SIGNALS -->
         <div id="tab-signals" class="tab-content">
             <div class="filters">
-                <button class="filter-btn active" data-filter="all">Alle</button>
+                <button class="filter-btn active" data-filter="all">All</button>
                 <button class="filter-btn" data-filter="New">Neu</button>
                 <button class="filter-btn" data-filter="Acknowledged">Bearbeitet</button>
                 <button class="filter-btn" data-filter="Acted">Erledigt</button>
@@ -368,7 +368,7 @@
                 <div class="table-header">
                     <h3>Feed Posts</h3>
                     <div class="filter-group">
-                        <button class="filter-btn active" data-filter="all">Alle</button>
+                        <button class="filter-btn active" data-filter="all">All</button>
                         <button class="filter-btn" data-filter="opportunities">Comment-Opportunities</button>
                         <button class="filter-btn" data-filter="competitor">Competitor-Posts</button>
                     </div>
@@ -384,8 +384,8 @@
         <!-- PATTERNS -->
         <div id="tab-patterns" class="tab-content">
             <div class="filters">
-                <button class="filter-btn active" data-filter="all">Alle</button>
-                <button class="filter-btn" data-filter="Active">Aktiv</button>
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="Active">Active</button>
                 <button class="filter-btn" data-filter="Testing">Testing</button>
                 <button class="filter-btn" data-filter="Disproven">Widerlegt</button>
             </div>
@@ -397,7 +397,7 @@
         <!-- COMPETITORS -->
         <div id="tab-competitors" class="tab-content">
             <div class="chart-container">
-                <h3>Engagement Rate Vergleich</h3>
+                <h3>Engagement Rate Comparison</h3>
                 <canvas id="competitorChart"></canvas>
             </div>
             <div class="table-container">
@@ -408,7 +408,7 @@
         <!-- STRATEGY -->
         <div id="tab-strategy" class="tab-content">
             <div class="table-container">
-                <div class="table-header"><h3>Aktive Strategie</h3></div>
+                <div class="table-header"><h3>Active Strategy</h3></div>
                 <div id="strategyContent" style="padding: 20px; white-space: pre-wrap; line-height: 1.6;"></div>
             </div>
             <div class="table-container">
@@ -573,7 +573,7 @@
         });
         document.getElementById('followUpsBody').innerHTML = followUps.slice(0, 5).map(c => `
             <tr><td>${c.Name||''}</td><td>${c['Outreach Type']||'—'}</td><td>${fmtDate(c['Follow-up Date'])}</td></tr>
-        `).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Keine Follow-ups fällig</td></tr>';
+        `).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">No follow-ups due</td></tr>';
 
         // Engagement chart
         renderEngagementChart(published);
@@ -612,13 +612,13 @@
         // Status filter
         const statuses = [...new Set(posts.map(p => p.Status).filter(Boolean))];
         const sel = document.getElementById('postStatusFilter');
-        sel.innerHTML = '<option value="">Alle Status</option>' + statuses.map(s => `<option>${s}</option>`).join('');
+        sel.innerHTML = '<option value="">All Statuses</option>' + statuses.map(s => `<option>${s}</option>`).join('');
         sel.onchange = () => renderPostsTable(sel.value ? posts.filter(p => p.Status === sel.value) : posts);
 
         // Filters
         const lifecycles = ['Active', 'Cooling', 'Archived'];
         document.getElementById('postFilters').innerHTML = `
-            <button class="filter-btn active" data-filter="all">Alle</button>
+            <button class="filter-btn active" data-filter="all">All</button>
             ${lifecycles.map(l => `<button class="filter-btn" data-filter="${l}">${l}</button>`).join('')}
         `;
         document.querySelectorAll('#postFilters .filter-btn').forEach(btn => {
@@ -671,7 +671,7 @@
     }
 
     function renderPostsTable(posts) {
-        document.getElementById('postsHead').innerHTML = '<tr><th>Title</th><th>Status</th><th>Lifecycle</th><th>Pillar</th><th>Rx</th><th>Cm</th><th>Imp</th><th>ER</th><th>Datum</th></tr>';
+        document.getElementById('postsHead').innerHTML = '<tr><th>Title</th><th>Status</th><th>Lifecycle</th><th>Pillar</th><th>Rx</th><th>Cm</th><th>Imp</th><th>ER</th><th>Date</th></tr>';
         document.getElementById('postsBody').innerHTML = sortBy(posts, 'Published Date').map(p => `
             <tr>
                 <td>${(p.Title||'').substring(0,60)}</td>
@@ -726,7 +726,7 @@
     }
 
     function renderContactsTable(contacts) {
-        document.getElementById('contactsHead').innerHTML = '<tr><th>Name</th><th>Headline</th><th>Score</th><th>Warm</th><th>ICP</th><th>Interactions</th><th>Letzte</th><th>Status</th></tr>';
+        document.getElementById('contactsHead').innerHTML = '<tr><th>Name</th><th>Headline</th><th>Score</th><th>Warm</th><th>ICP</th><th>Interactions</th><th>Last</th><th>Status</th></tr>';
         document.getElementById('contactsBody').innerHTML = sortBy(contacts, 'Warm Score').map(c => `
             <tr>
                 <td><strong>${c.Name||''}</strong></td>
@@ -758,7 +758,7 @@
     }
 
     function renderSignalsTable(signals) {
-        document.getElementById('signalsHead').innerHTML = '<tr><th>Datum</th><th>Typ</th><th>Priorität</th><th>Kontakt</th><th>Action</th><th>Detail</th><th>Status</th></tr>';
+        document.getElementById('signalsHead').innerHTML = '<tr><th>Date</th><th>Type</th><th>Priority</th><th>Contact</th><th>Action</th><th>Detail</th><th>Status</th></tr>';
         document.getElementById('signalsBody').innerHTML = sortBy(signals, 'Date').map(s => `
             <tr>
                 <td>${fmtDate(s.Date)}</td>
@@ -893,7 +893,7 @@
     function renderCompetitors() {
         const comp = DATA['Competitors'] || [];
 
-        document.getElementById('competitorsHead').innerHTML = '<tr><th>Name</th><th>Headline</th><th>Followers</th><th>Change</th><th>Freq</th><th>Avg Rx</th><th>Avg ER</th><th>Top Format</th><th>Shared</th><th>Letzter Check</th></tr>';
+        document.getElementById('competitorsHead').innerHTML = '<tr><th>Name</th><th>Headline</th><th>Followers</th><th>Change</th><th>Freq</th><th>Avg Rx</th><th>Avg ER</th><th>Top Format</th><th>Shared</th><th>Last Check</th></tr>';
         document.getElementById('competitorsBody').innerHTML = comp.map(c => `
             <tr>
                 <td><strong>${c.Name||''}</strong></td>
@@ -940,13 +940,13 @@
         const active = strats.find(s => s.Status === 'Active');
 
         document.getElementById('strategyContent').innerHTML = active
-            ? `<div style="margin-bottom:12px"><strong>Version ${active.Version||'—'}</strong> | Gültig ab: ${fmtDate(active['Valid From'])}</div>
+            ? `<div style="margin-bottom:12px"><strong>Version ${active.Version||'—'}</strong> | Valid from: ${fmtDate(active['Valid From'])}</div>
                <div style="color:var(--text-muted);margin-bottom:16px">${active.Changes||''}</div>
-               <div style="white-space:pre-wrap;line-height:1.7">${active.Content||'Keine Strategie definiert.'}</div>`
-            : '<div style="color:var(--text-muted);padding:20px;text-align:center">Keine aktive Strategie. Führe /setup oder /evolve aus.</div>';
+               <div style="white-space:pre-wrap;line-height:1.7">${active.Content||'No strategy defined.'}</div>`
+            : '<div style="color:var(--text-muted);padding:20px;text-align:center">No active strategy. Run /setup or /evolve.</div>';
 
         const archived = strats.filter(s => s.Status === 'Archived');
-        document.getElementById('strategyHead').innerHTML = '<tr><th>Version</th><th>Status</th><th>Gültig ab</th><th>Änderungen</th></tr>';
+        document.getElementById('strategyHead').innerHTML = '<tr><th>Version</th><th>Status</th><th>Valid From</th><th>Changes</th></tr>';
         document.getElementById('strategyBody').innerHTML = archived.map(s => `
             <tr>
                 <td>${s.Version||''}</td>

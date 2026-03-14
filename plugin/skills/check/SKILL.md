@@ -1,6 +1,6 @@
 ---
 name: check
-description: "Quick Status-Check ohne API-Calls. Zeigt aktuellen Stand aus Datenspeicher + Session-Info."
+description: "Quick status check without API calls. Shows current state from data store + session info."
 user-invocable: true
 allowed-tools:
   - Bash
@@ -10,60 +10,60 @@ allowed-tools:
 
 # /check — Quick Status
 
-Zeigt den aktuellen Stand ohne API-Calls oder Updates. Liest nur den Datenspeicher und config.json.
+Shows the current state without API calls or updates. Only reads the data store and config.json.
 
-## Ablauf
+## Workflow
 
-1. **Config laden**: `config.json` (inkl. session Block)
-2. **Datenspeicher lesen** (kein Agent nötig, direkt lesen):
-   - Posts: Anzahl pro Status + Lifecycle
-   - Contacts: Anzahl pro Score
-   - Fällige Follow-ups
-   - Neue Signals (Status=New)
-   - Letzter Post: Wann
-   - Letzter Report: Wann
-   - Aktive Strategie: Version
-   - Laufende Experimente
+1. **Load config**: `config.json` (incl. session block)
+2. **Read data store** (no agent needed, read directly):
+   - Posts: Count per status + lifecycle
+   - Contacts: Count per score
+   - Due follow-ups
+   - New signals (Status=New)
+   - Last post: When
+   - Last report: When
+   - Active strategy: Version
+   - Running experiments
 
-3. **Session-Info anzeigen**:
-   - Letzte Session: Wann + wie lange her
-   - Letzter Report: Wann
-   - Letzter Evolve: Wann
-   - Letzter Competitor-Check: Wann
+3. **Show session info**:
+   - Last session: When + how long ago
+   - Last report: When
+   - Last evolve: When
+   - Last competitor check: When
 
-4. **Kompakt anzeigen**:
+4. **Display compact**:
 
 ```
 LinkedIn Commander Status (@username)
 
 SESSION:
-  Letzte Session: vor 18h (gestern 08:00)
-  Letzter Report: KW 10 (vor 4 Tagen)
-  Letzter Evolve: vor 11 Tagen
-  Letzter Competitor-Check: vor 8 Tagen
+  Last session: 18h ago (yesterday 08:00)
+  Last report: CW 10 (4 days ago)
+  Last evolve: 11 days ago
+  Last competitor check: 8 days ago
 
 CONTENT:
   Posts: 23 total
     Ideas: 3 | Drafts: 1 | Published: 18 | Analyzed: 1
     Active: 2 | Cooling: 1 | Archived: 15
-  Letzter Post: vor 1 Tag
-  Strategie: v1.2 (seit 03.03.)
-  Experiment: hook-type-v1 (7/10 Posts)
+  Last post: 1 day ago
+  Strategy: v1.2 (since Mar 03)
+  Experiment: hook-type-v1 (7/10 posts)
 
 CONTACTS:
   Total: 245 | Hot: 5 | Warm: 89 | Cold: 122 | Dormant: 29
-  Follow-ups fällig: 2
+  Follow-ups due: 2
 
 SIGNALS:
-  Neue: 3 (1 High, 2 Medium)
+  New: 3 (1 High, 2 Medium)
 
-EMPFEHLUNG:
-  → /auto für Morning Check (18h seit letzter Session)
+RECOMMENDATION:
+  → /auto for Morning Check (18h since last session)
 ```
 
-## Regeln
+## Rules
 
-- **Keine API-Calls** — nur lokale Daten lesen
-- **Keine Updates** — nichts schreiben
-- **Sofort** — muss in unter 5 Sekunden fertig sein
-- **Session-Info immer zeigen** — hilft dem User zu wissen was aktuell ist
+- **No API calls** — only read local data
+- **No updates** — write nothing
+- **Instant** — must finish in under 5 seconds
+- **Always show session info** — helps the user know what's current

@@ -1,6 +1,6 @@
 ---
 name: contacts
-description: "Contacts & Leads verwalten. Warm Scores, ICP Matching, Hot Leads, Follow-ups, Dormant Connections, Network Health. Absorbiert /network als Sub-Command."
+description: "Contacts & Leads management. Warm Scores, ICP Matching, Hot Leads, Follow-ups, Dormant Connections, Network Health. Absorbs /network as sub-command."
 user-invocable: true
 allowed-tools:
   - Bash
@@ -10,94 +10,94 @@ allowed-tools:
   - Agent
 ---
 
-# /contacts — Kontakte verwalten
+# /contacts — Manage Contacts
 
-Verwaltet LinkedIn-Kontakte und Leads mit Warm Score, ICP Match und Follow-up Tracking.
+Manages LinkedIn contacts and leads with Warm Score, ICP Match, and follow-up tracking.
 
-**WICHTIG: Delegiere die Arbeit an den `contact-scanner` Agent. Mach NICHTS selbst — starte den Agent mit dem `Agent`-Tool und übergib den Sub-Command (scan, hot, follow-up, stats, etc.).**
+**IMPORTANT: Delegate the work to the `contact-scanner` agent. Do NOTHING yourself — start the agent with the `Agent` tool and pass the sub-command (scan, hot, follow-up, stats, etc.).**
 
-## Verwendung
+## Usage
 
 ```
-/contacts scan          # Neue Engagers scannen (via contact-scanner)
-/contacts hot           # Hot Contacts anzeigen (Warm Score >= 60)
-/contacts warm          # Warm Contacts (Score 25-59)
-/contacts follow-up     # Fällige Follow-ups
-/contacts dormant       # Dormant Connections (>90 Tage inaktiv)
-/contacts <name>        # Bestimmten Kontakt suchen/anzeigen
-/contacts stats         # Network Health + Statistiken (absorbiert /network)
+/contacts scan          # Scan new engagers (via contact-scanner)
+/contacts hot           # Show hot contacts (Warm Score >= 60)
+/contacts warm          # Warm contacts (Score 25-59)
+/contacts follow-up     # Due follow-ups
+/contacts dormant       # Dormant connections (>90 days inactive)
+/contacts <name>        # Search/show specific contact
+/contacts stats         # Network Health + statistics (absorbs /network)
 ```
 
-## Ablauf
+## Workflow
 
 ### scan
-1. **`contact-scanner` Agent** starten
-2. Neue und aktualisierte Contacts zeigen
-3. Warm Scores und ICP Matching
+1. **Start `contact-scanner` agent**
+2. Show new and updated contacts
+3. Warm Scores and ICP matching
 
 ### hot
-Contacts mit Score "Hot" aus Datenspeicher:
+Contacts with Score "Hot" from data store:
 ```
 Hot Contacts (5):
 
   1. Anna Schmidt | CTO @ TechAG
      Warm Score: 85 | ICP: High | 4 Interactions
-     Letztes: Kommentar vor 2 Tagen
+     Last: Comment 2 days ago
      Status: Engaged → Ready for outreach
 
   2. Peter Mueller | VP Sales @ SaaS Inc
      Warm Score: 72 | ICP: High | 3 Interactions
-     Letztes: Reaction vor 5 Tagen
+     Last: Reaction 5 days ago
      Status: New → Research + Connect
 ```
 
 ### follow-up
-Contacts mit Follow-up Date <= heute:
+Contacts with Follow-up Date <= today:
 ```
-Fällige Follow-ups (2):
+Due Follow-ups (2):
 
   1. Max Muster | Developer @ StartupCo
-     Status: Contacted | Outreach: Connection Request vor 8 Tagen
-     Response: No Response → Re-follow-up oder abhaken?
+     Status: Contacted | Outreach: Connection Request 8 days ago
+     Response: No Response → Re-follow-up or close out?
 
   2. Lisa Weber | Head of Product @ BigCorp
      Status: Dormant → Reactivated
-     → Reaktivieren mit personalisierter Nachricht
+     → Reactivate with personalized message
 ```
 
 ### dormant
-Connected Contacts mit Last Interaction > dormant_days (default 90 Tage)
+Connected contacts with Last Interaction > dormant_days (default 90 days)
 
 ### <name>
-Contact suchen und alle Details zeigen:
-- Profil-Daten, Warm Score, ICP Match
-- Interaction History
-- Outreach History
-- Optional: Profil via CLI auffrischen
+Search contact and show all details:
+- Profile data, Warm Score, ICP Match
+- Interaction history
+- Outreach history
+- Optional: Refresh profile via CLI
 
-### stats (absorbiert /network)
-Network Health + Kontakt-Statistiken:
+### stats (absorbs /network)
+Network Health + contact statistics:
 ```
-Contact-Statistiken:
+Contact Statistics:
 
 Total: 245 | Hot: 5 | Warm: 89 | Cold: 122 | Dormant: 29
-Neue (diese Woche): 12
+New (this week): 12
 ICP Match: 34 High, 67 Medium, 144 Low/None
-Follow-ups fällig: 3
+Follow-ups due: 3
 Avg Warm Score: 28
 
 Network Health:
-  Rollen: 75% Developer, 15% Manager, 5% C-Level, 5% Other
-  → Gap bei Entscheidern (ICP sagt CTO/VP)
-  Branchen: 80% Software, 10% Finance, 10% Other
-  → Zu einseitig für Lead-Gen Ziel
+  Roles: 75% Developer, 15% Manager, 5% C-Level, 5% Other
+  → Gap in decision-makers (ICP says CTO/VP)
+  Industries: 80% Software, 10% Finance, 10% Other
+  → Too one-sided for lead-gen goal
   Connection Degree: 60% 1st, 30% 2nd, 10% 3rd
-  Audience vs. ICP: 60% Developer statt CTO → Content anpassen
+  Audience vs. ICP: 60% Developer instead of CTO → adjust content
 ```
 
-## Regeln
+## Rules
 
-- **Privacy** — nur öffentliche LinkedIn-Daten
-- **Kein Spam** — Outreach nur mit User-Bestätigung
-- **Qualität > Quantität** — lieber 10 Hot als 100 Cold
-- **Warm Score Decay** — Scores veralten, wird bei /auto automatisch angewendet
+- **Privacy** — only public LinkedIn data
+- **No spam** — outreach only with user confirmation
+- **Quality > Quantity** — better 10 Hot than 100 Cold
+- **Warm Score decay** — scores age, applied automatically during /auto

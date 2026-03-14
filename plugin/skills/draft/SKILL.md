@@ -1,6 +1,6 @@
 ---
 name: draft
-description: "Neuen LinkedIn-Post oder strategischen Kommentar erstellen. Nutzt Brand Voice, Strategie und Patterns. +Comment-Draft-Modus."
+description: "Create a new LinkedIn post or strategic comment. Uses brand voice, strategy, and patterns. +Comment draft mode."
 user-invocable: true
 allowed-tools:
   - Bash
@@ -10,51 +10,51 @@ allowed-tools:
   - Agent
 ---
 
-# /draft — Post oder Kommentar erstellen
+# /draft — Create Post or Comment
 
-Erstellt LinkedIn-Post-Entwürfe oder strategische Kommentare.
+Creates LinkedIn post drafts or strategic comments.
 
-**WICHTIG: Delegiere die Arbeit an den `content-writer` Agent. Mach NICHTS selbst — starte den Agent mit dem `Agent`-Tool und übergib Thema + Modus (Post oder Comment).**
+**IMPORTANT: Delegate the work to the `content-writer` agent. Do NOTHING yourself — start the agent with the `Agent` tool and pass the topic + mode (Post or Comment).**
 
-## Verwendung
+## Usage
 
 ```
-/draft <thema>              # Post zu einem Thema
-/draft                      # Nächste Approved Idea aus Pipeline nehmen
-/draft comment <urn>        # Kommentar-Draft für einen Post (absorbiert /comment)
+/draft <topic>              # Post about a topic
+/draft                      # Take next approved idea from pipeline
+/draft comment <urn>        # Comment draft for a post (absorbs /comment)
 ```
 
-## Ablauf
+## Workflow
 
-### Post-Draft
+### Post Draft
 
-1. **Thema bestimmen:**
-   - Argument übergeben? → Dieses Thema verwenden
-   - Kein Argument? → Älteste Idea mit Status "Approved" aus Datenspeicher
-   - Keine Approved Idea? → User fragen oder `/ideas` vorschlagen
+1. **Determine topic:**
+   - Argument provided? → Use that topic
+   - No argument? → Oldest idea with status "Approved" from data store
+   - No approved idea? → Ask user or suggest `/ideas`
 
-2. **`content-writer` Agent** starten mit dem Thema
+2. **Start `content-writer` agent** with the topic
 
-3. **Draft präsentieren** — den geschriebenen Post dem User zeigen
+3. **Present draft** — show the written post to the user
 
-4. **Feedback-Loop:**
-   - User kann Änderungen vorschlagen
-   - Post iterativ verbessern
-   - Wenn zufrieden: Status auf "Draft" setzen, .md Datei gespeichert
+4. **Feedback loop:**
+   - User can suggest changes
+   - Iteratively improve post
+   - When satisfied: Set status to "Draft", .md file saved
 
-### Comment-Draft (/draft comment <urn>)
+### Comment Draft (/draft comment <urn>)
 
-1. **Ziel-Post laden** (aus Feed Insights oder via URN)
-2. **`content-writer` Agent** im Comment-Modus starten:
-   - Bezug zum Post-Inhalt (nicht generisch)
-   - Eigene Expertise einbringen
-   - Max 300-500 Zeichen
-   - Frage am Ende (fördert Thread)
-3. **Dem User zeigen** — nie automatisch posten
+1. **Load target post** (from Feed Insights or via URN)
+2. **Start `content-writer` agent** in comment mode:
+   - Reference the post content (not generic)
+   - Bring in own expertise
+   - Max 300-500 characters
+   - Question at the end (encourages thread)
+3. **Show to user** — never post automatically
 
-## Regeln
+## Rules
 
-- **Immer den Draft zeigen** bevor er gespeichert wird
-- **User hat das letzte Wort** — nie eigenständig finalisieren
-- **Ein Draft pro Aufruf** — nicht mehrere auf einmal
-- **NIE automatisch posten** — User kopiert und postet manuell
+- **Always show the draft** before saving
+- **User has the final word** — never finalize autonomously
+- **One draft per call** — not multiple at once
+- **NEVER post automatically** — user copies and posts manually

@@ -1,6 +1,6 @@
 ---
 name: auto
-description: "Morning Check / Session Entry Point. Delta-Pipeline: Stage 1 COLLECT → Stage 2 ENRICH → Stage 3 DETECT (+ Feed parallel). Vereinigt bisheriges /daily + /auto."
+description: "Morning Check / Session Entry Point. Delta pipeline: Stage 1 COLLECT → Stage 2 ENRICH → Stage 3 DETECT (+ Feed parallel). Merges previous /daily + /auto."
 user-invocable: true
 allowed-tools:
   - Bash
@@ -14,23 +14,23 @@ allowed-tools:
 
 # /auto — Morning Check (Session Entry Point)
 
-Der zentrale Entry Point für jede automatische Session. Führt die 3-Stage-Pipeline aus und gibt dem User eine priorisierte Zusammenfassung.
+The central entry point for every automated session. Runs the 3-stage pipeline and gives the user a prioritized summary.
 
-**Ersetzt das bisherige `/daily` und `/auto`.** Wird vom Cron-Job (täglich ~08:00) oder manuell aufgerufen.
+**Replaces the previous `/daily` and `/auto`.** Called by cron job (daily ~08:00) or manually.
 
-**WICHTIG: Delegiere die Arbeit an die spezialisierten Agents. Mach NICHTS selbst — du bist nur der Orchestrator.**
+**IMPORTANT: Delegate the work to the specialized agents. Do NOTHING yourself — you are only the orchestrator.**
 
-Nutze das `Agent`-Tool um die folgenden Agents **sequentiell** (Stage 1→2→3) bzw. **parallel** (3a+3b) zu starten:
-- **Stage 1:** `data-collector` Agent starten
-- **Stage 2:** `contact-scanner` Agent starten (mit Output von Stage 1)
-- **Stage 3a:** `signal-detector` Agent starten (mit Output von Stage 2)
-- **Stage 3b:** `feed-analyst` Agent starten (parallel zu 3a)
+Use the `Agent` tool to start the following agents **sequentially** (Stage 1→2→3) or **in parallel** (3a+3b):
+- **Stage 1:** Start `data-collector` agent
+- **Stage 2:** Start `contact-scanner` agent (with Stage 1 output)
+- **Stage 3a:** Start `signal-detector` agent (with Stage 2 output)
+- **Stage 3b:** Start `feed-analyst` agent (parallel to 3a)
 
-## Verwendung
+## Usage
 
 ```
-/auto              # Voller Morning Check (3-Stage Pipeline)
-/auto quick        # Nur Stage 1 (Daten sammeln, kein Feed)
+/auto              # Full Morning Check (3-stage pipeline)
+/auto quick        # Stage 1 only (collect data, no feed)
 ```
 
 ## 3-Stage Pipeline
@@ -44,99 +44,99 @@ data-collector  ────────► contact-scanner  ──────�
                                                     (Social Media Scout)
 ```
 
-### Stage 1: COLLECT (data-collector Agent)
+### Stage 1: COLLECT (data-collector agent)
 
-**Was passiert:**
-1. Lokale Berechnungen (KEIN API-Call):
-   - Post-Lifecycle-Übergänge (Active → Cooling → Archived)
-   - Warm Score Decay (-5 pro Woche seit letzter Session)
-   - Signal-Expiry (New > 7 Tage → Expired)
-2. Notifications holen (1 API-Call = 80% der Deltas)
-3. Analytics für aktive Posts (nur Lifecycle=Active/Cooling)
-4. Snapshot-Checks (Tag 3/7/14)
+**What happens:**
+1. Local calculations (NO API call):
+   - Post lifecycle transitions (Active → Cooling → Archived)
+   - Warm Score decay (-5 per week since last session)
+   - Signal expiry (New > 7 days → Expired)
+2. Fetch notifications (1 API call = 80% of deltas)
+3. Analytics for active posts (only Lifecycle=Active/Cooling)
+4. Snapshot checks (Day 3/7/14)
 
-**Output → Stage 2:** Neue/aktualisierte Contacts mit Interaction-Typ und Post-URN.
+**Output → Stage 2:** New/updated contacts with interaction type and post URN.
 
-### Stage 2: ENRICH (contact-scanner Agent)
+### Stage 2: ENRICH (contact-scanner agent)
 
-**Input:** Output von Stage 1 (keine eigenen API-Calls).
+**Input:** Output from Stage 1 (no own API calls).
 
-**Was passiert:**
-1. Contacts updaten (neu anlegen oder bestehende aktualisieren)
-2. Warm Scores neu berechnen
-3. ICP Matching für neue Contacts
-4. Dormant Detection + Reactivation
-5. Follow-ups identifizieren
+**What happens:**
+1. Update contacts (create new or update existing)
+2. Recalculate Warm Scores
+3. ICP matching for new contacts
+4. Dormant detection + reactivation
+5. Identify follow-ups
 
-**Output → Stage 3:** Angereicherte Contacts (Score-Änderungen, neue Hot Contacts, Reactivations).
+**Output → Stage 3:** Enriched contacts (score changes, new hot contacts, reactivations).
 
 ### Stage 3: DETECT (parallel)
 
-**3a: signal-detector Agent**
-- Input: Angereicherte Contacts von Stage 2
-- Signals erkennen aus Pipeline-Input (kein API nötig für meiste)
-- Optional: Keyword-Search (1 API-Call pro Keyword)
-- Output: Priorisierte Signal-Liste
+**3a: signal-detector agent**
+- Input: Enriched contacts from Stage 2
+- Detect signals from pipeline input (no API needed for most)
+- Optional: Keyword search (1 API call per keyword)
+- Output: Prioritized signal list
 
-**3b: feed-analyst Agent (parallel)**
-- Unabhängig von Stage 1-2 (eigener Feed-Call)
-- Feed holen (1 API-Call)
-- Trends erkennen, Comment-Opportunities finden
-- Output: Trending Topics + Comment-Opportunities
+**3b: feed-analyst agent (parallel)**
+- Independent from Stage 1-2 (own feed call)
+- Fetch feed (1 API call)
+- Detect trends, find comment opportunities
+- Output: Trending topics + comment opportunities
 
-## Zusammenfassung an User
+## Summary to User
 
 ```
-Morning Check abgeschlossen (seit letzter Session: 18h)
+Morning Check complete (since last session: 18h)
 
-📊 DATEN:
-  [n] Notifications verarbeitet
-  [n] Post-Metriken aktualisiert
-  [n] Lifecycle-Übergänge (Active→Cooling: 1, Cooling→Archived: 0)
+📊 DATA:
+  [n] notifications processed
+  [n] post metrics updated
+  [n] lifecycle transitions (Active→Cooling: 1, Cooling→Archived: 0)
 
 👥 CONTACTS:
-  [n] neue Contacts | [n] aktualisiert
-  [n] neue Hot Contacts: [Namen]
-  [n] Follow-ups fällig
+  [n] new contacts | [n] updated
+  [n] new hot contacts: [names]
+  [n] follow-ups due
 
-🚨 SIGNALS ([n] neu):
+🚨 SIGNALS ([n] new):
   🔴 engagement_hot — Anna Schmidt (Score: 72)
-  🔴 job_change — Max Müller (→ VP Engineering @ NewCo)
-  🟡 keyword_mention — "AI Agents" in Post von @tech-leader
+  🔴 job_change — Max Mueller (→ VP Engineering @ NewCo)
+  🟡 keyword_mention — "AI Agents" in post by @tech-leader
 
 📈 FEED:
   Trending: "AI Agents" (7x, 2.3x avg), "Remote Work" (4x)
-  💬 Comment-Opportunities:
+  💬 Comment Opportunities:
     1. [HIGH] @sarah-k: "The future of..." (89 Rx in 3h)
     2. [MEDIUM] @tech-leader: "Why we switched..." (45 Rx in 5h)
 
-⚠️ BRAUCHT DEINE ENTSCHEIDUNG:
-  - 2 Follow-ups fällig → /contacts follow-up
-  - Letzter Post vor 5 Tagen → /draft für neuen Post?
-  - Neue Patterns erkannt → /evolve für Strategy-Update?
-  - 2 Comment-Opportunities → Draft schreiben?
+⚠️ NEEDS YOUR DECISION:
+  - 2 follow-ups due → /contacts follow-up
+  - Last post 5 days ago → /draft for new post?
+  - New patterns detected → /evolve for strategy update?
+  - 2 comment opportunities → Write draft?
 
-✅ ALLES OK:
-  Content-Pipeline: 5 Ideas, 2 Drafts
-  Competitors: aktuell (vor 8 Tagen)
+✅ ALL GOOD:
+  Content pipeline: 5 Ideas, 2 Drafts
+  Competitors: current (8 days ago)
   Strategy: v1.2
 ```
 
-## Optionale Checks (am Ende)
+## Optional Checks (at the end)
 
-Nach der Pipeline — nur Hinweise, keine Aktionen:
-- Content-Pipeline dünn (< 3 Ideas)? → "/ideas um nachzufüllen"
-- Published Post ohne Analyse? → "/analyze <urn>"
-- Competitor-Daten > 2 Wochen? → "Beim nächsten /report wird Competitor-Update gemacht"
-- Wöchentlicher Report fällig? → "/report erstellen"
+After the pipeline — hints only, no actions:
+- Content pipeline thin (< 3 Ideas)? → "/ideas to refill"
+- Published post without analysis? → "/analyze <urn>"
+- Competitor data > 2 weeks old? → "Competitor update will happen at next /report"
+- Weekly report due? → "Create /report"
 
-## Regeln
+## Rules
 
-- **Session updaten** — nach Abschluss `session.last_session_date` setzen
-- **Delta-basiert** — nur Daten seit letzter Session
-- **Pipeline-Reihenfolge** — Stage 1 → 2 → 3 (Feed parallel zu 3)
-- **Daten sammeln: ja. Aktionen nach aussen: nur mit Bestätigung.**
-- **Nie eigenständig posten, senden, kommentieren**
-- **Kurz und actionable** — keine langen Erklärungen
-- **Agents parallel** wo möglich (Stage 3a + 3b)
-- **Priorität** — Signals und Follow-ups vor Content
+- **Update session** — after completion set `session.last_session_date`
+- **Delta-based** — only data since last session
+- **Pipeline order** — Stage 1 → 2 → 3 (Feed parallel to 3)
+- **Collect data: yes. External actions: only with confirmation.**
+- **Never post, send, or comment autonomously**
+- **Short and actionable** — no long explanations
+- **Agents in parallel** where possible (Stage 3a + 3b)
+- **Priority** — signals and follow-ups before content
