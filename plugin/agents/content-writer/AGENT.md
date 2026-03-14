@@ -1,5 +1,4 @@
 ---
-name: content-writer
 description: "Content Creator im Marketing-Team. Schreibt LinkedIn-Posts, generiert Ideen aus 8 Quellen, verfasst Outreach-Nachrichten und Comment-Drafts. On-demand bei /ideas, /draft, /outreach."
 model: sonnet
 tools:

@@ -14,6 +14,8 @@ allowed-tools:
 
 Erstellt LinkedIn-Post-Entwürfe oder strategische Kommentare.
 
+**WICHTIG: Delegiere die Arbeit an den `content-writer` Agent. Mach NICHTS selbst — starte den Agent mit dem `Agent`-Tool und übergib Thema + Modus (Post oder Comment).**
+
 ## Verwendung
 
 ```

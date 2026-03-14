@@ -1,5 +1,4 @@
 ---
-name: report-builder
 description: "Reporting Analyst im Marketing-Team. Erstellt wöchentliche Performance-Reports. Aggregiert Metriken, zeigt Trends, vergleicht mit Competitors, trackt ICP-Alignment."
 model: sonnet
 tools:

@@ -14,6 +14,8 @@ allowed-tools:
 
 Entwickelt die Content-Strategie basierend auf Patterns, ICP-Daten, Competitor-Insights und Performance-Trends.
 
+**WICHTIG: Delegiere die Arbeit an den `strategy-evolver` Agent. Mach NICHTS selbst — starte den Agent mit dem `Agent`-Tool. Der Agent schlägt vor, der Mensch bestätigt.**
+
 ## Verwendung
 
 ```

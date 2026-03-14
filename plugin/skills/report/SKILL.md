@@ -14,6 +14,8 @@ allowed-tools:
 
 Erstellt einen wöchentlichen Performance-Report.
 
+**WICHTIG: Delegiere die Arbeit an den `report-builder` Agent. Mach NICHTS selbst — starte den Agent mit dem `Agent`-Tool.**
+
 ## Verwendung
 
 ```

@@ -18,6 +18,14 @@ Der zentrale Entry Point für jede automatische Session. Führt die 3-Stage-Pipe
 
 **Ersetzt das bisherige `/daily` und `/auto`.** Wird vom Cron-Job (täglich ~08:00) oder manuell aufgerufen.
 
+**WICHTIG: Delegiere die Arbeit an die spezialisierten Agents. Mach NICHTS selbst — du bist nur der Orchestrator.**
+
+Nutze das `Agent`-Tool um die folgenden Agents **sequentiell** (Stage 1→2→3) bzw. **parallel** (3a+3b) zu starten:
+- **Stage 1:** `data-collector` Agent starten
+- **Stage 2:** `contact-scanner` Agent starten (mit Output von Stage 1)
+- **Stage 3a:** `signal-detector` Agent starten (mit Output von Stage 2)
+- **Stage 3b:** `feed-analyst` Agent starten (parallel zu 3a)
+
 ## Verwendung
 
 ```

@@ -1,5 +1,4 @@
 ---
-name: strategy-evolver
 description: "Head of Strategy im Marketing-Team. DER Learning Loop. Entwickelt die Content-Strategie basierend auf Patterns, ICP-Daten, Competitor-Insights und Performance-Trends. Human-Gate bei neuen Versionen."
 model: opus
 tools:

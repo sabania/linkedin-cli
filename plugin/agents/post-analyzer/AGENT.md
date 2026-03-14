@@ -1,5 +1,4 @@
 ---
-name: post-analyzer
 description: "Performance Analyst im Marketing-Team. Analysiert Posts, erkennt Patterns (inkl. Kombinationen), bewertet Experimente, updatet ICP Profile. Wöchentlich bei /report + on-demand bei /analyze."
 model: sonnet
 tools:

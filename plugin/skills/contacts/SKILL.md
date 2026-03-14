@@ -14,6 +14,8 @@ allowed-tools:
 
 Verwaltet LinkedIn-Kontakte und Leads mit Warm Score, ICP Match und Follow-up Tracking.
 
+**WICHTIG: Delegiere die Arbeit an den `contact-scanner` Agent. Mach NICHTS selbst — starte den Agent mit dem `Agent`-Tool und übergib den Sub-Command (scan, hot, follow-up, stats, etc.).**
+
 ## Verwendung
 
 ```

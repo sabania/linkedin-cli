@@ -14,6 +14,8 @@ allowed-tools:
 
 Generiert eine personalisierte Nachricht für einen LinkedIn-Kontakt.
 
+**WICHTIG: Delegiere die Arbeit an den `content-writer` Agent. Mach NICHTS selbst — starte den Agent mit dem `Agent`-Tool und übergib den Kontakt-Namen/ID.**
+
 ## Verwendung
 
 ```

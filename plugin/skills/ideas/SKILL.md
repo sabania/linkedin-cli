@@ -15,6 +15,8 @@ allowed-tools:
 
 Generiert Content-Ideen aus 8 verschiedenen Quellen für maximale Vielfalt und Relevanz.
 
+**WICHTIG: Delegiere die Arbeit an den `content-writer` Agent. Mach NICHTS selbst — starte den Agent mit dem `Agent`-Tool und übergib Anzahl + optionalen Pillar.**
+
 ## Verwendung
 
 ```

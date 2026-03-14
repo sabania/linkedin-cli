@@ -1,5 +1,4 @@
 ---
-name: signal-detector
 description: "Intelligence Officer im Marketing-Team. Erkennt Signals durch Cross-Referenzierung. Pipeline Stage 3: DETECT. Empfängt angereicherte Contacts von contact-scanner (Stage 2)."
 model: sonnet
 tools:

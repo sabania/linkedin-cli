@@ -1,5 +1,4 @@
 ---
-name: competitor-analyst
 description: "Market Researcher im Marketing-Team. Analysiert LinkedIn-Wettbewerber. Initial Deep-Dive und Delta-Updates. On-demand bei /competitor, periodisch bei Weekly Review (wenn >2 Wochen alt)."
 model: sonnet
 tools:

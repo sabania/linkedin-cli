@@ -1,5 +1,4 @@
 ---
-name: contact-scanner
 description: "Community Manager im Marketing-Team. Pflegt Beziehungen, berechnet Warm Scores, ICP Match. Pipeline Stage 2: ENRICH. Empfängt Input von data-collector (Stage 1)."
 model: sonnet
 tools:

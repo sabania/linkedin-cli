@@ -14,6 +14,8 @@ allowed-tools:
 
 Analysiert einen LinkedIn-Wettbewerber.
 
+**WICHTIG: Delegiere die Arbeit an den `competitor-analyst` Agent. Mach NICHTS selbst — starte den Agent mit dem `Agent`-Tool und übergib den Username.**
+
 ## Verwendung
 
 ```

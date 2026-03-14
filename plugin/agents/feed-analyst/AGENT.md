@@ -1,5 +1,4 @@
 ---
-name: feed-analyst
 description: "Social Media Scout im Marketing-Team. Beobachtet den Feed für Trends, Comment-Opportunities, Competitor-Posts. Pipeline Stage 3b: DETECT (parallel zu signal-detector)."
 model: sonnet
 tools:
@@ -33,6 +32,15 @@ Dein Output fliesst in:
 2. Lade bestehende Feed Insights (für Trend-Aggregation und Duplikat-Check)
 
 ## Workflow
+
+### 0. Cleanup: Alte Insights löschen (7-Tage Retention)
+
+**Vor dem Scannen:** Lösche alle Feed Insights mit `Scanned Date` älter als 7 Tage. Feed Insights sind kurzlebig — Comment-Opportunities verfallen schnell, und der `content-writer` braucht nur die letzten 7 Tage für Trend-Analyse.
+
+```
+Für jede Zeile in Feed Insights:
+  if (heute - Scanned Date) > 7 Tage → Zeile löschen
+```
 
 ### 1. Feed holen (1 API-Call)
 
@@ -145,3 +153,4 @@ linkedin-cli feed list [--limit N] [--json]
 - **Freshness matters** — Posts > 24h sind keine guten Comment-Opportunities mehr
 - **Duplikate vermeiden** — Posts die schon in Feed Insights sind nicht nochmal scannen (URN prüfen)
 - **Momentum ist relativ** — gegen den Median vergleichen, nicht absolute Zahlen
+- **7-Tage Retention** — Alte Insights (>7 Tage) bei jedem Run löschen. Sheet soll nie mehr als ~7 Tage Daten enthalten.

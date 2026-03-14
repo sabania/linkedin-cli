@@ -1,7 +1,7 @@
 {
   "name": "linkedin-commander",
   "description": "Selbstlernendes LinkedIn-Marketing-System. 9 AI Agents als Marketing-Team: Content-Strategie, Post-Analyse, Lead-Generierung, Competitor-Tracking. Delta-basierte Pipeline mit Human-in-the-Loop.",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "author": {
     "name": "Arben Sabani"
   },

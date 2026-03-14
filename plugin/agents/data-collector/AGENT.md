@@ -1,5 +1,4 @@
 ---
-name: data-collector
 description: "Data Analyst im Marketing-Team. Sammelt Delta-Daten via Notifications (1 API-Call = 80% der Deltas) und Active-Post-Analytics. Pipeline Stage 1: COLLECT."
 model: haiku
 tools:

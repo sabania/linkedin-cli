@@ -14,6 +14,8 @@ allowed-tools:
 
 Analysiert Post-Performance, erkennt Patterns und schärft das ICP. Lifecycle-aware: unterscheidet Active/Cooling/Archived Posts.
 
+**WICHTIG: Delegiere die Arbeit an den `post-analyzer` Agent. Mach NICHTS selbst — starte den Agent mit dem `Agent`-Tool und übergib den Post-URN.**
+
 ## Verwendung
 
 ```
