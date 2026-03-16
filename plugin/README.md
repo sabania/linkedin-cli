@@ -66,8 +66,8 @@ graph TB
 graph TD
     START["Session Start<br/>(Cron or ad-hoc)"] --> LOAD["Load config.json<br/>Check last_session_date"]
     LOAD --> LOCAL["Local Calculations<br/>(NO API call)"]
-    LOCAL --> |"Lifecycle transitions<br/>Warm Score decay<br/>Signal expiry"| DELTA["Fetch Delta Data<br/>(only NEW data)"]
-    DELTA --> |"Notifications 1 call<br/>Active Post Analytics<br/>Feed 1 call"| PROCESS["Process<br/>(Collect → Enrich → Detect)"]
+    LOCAL --> |"Lifecycle transitions<br/>Warm Score decay<br/>Signal expiry<br/>Draft cleanup check"| DELTA["Fetch Delta Data<br/>(only NEW data)"]
+    DELTA --> |"Notifications 1 call<br/>Active Post Analytics + Comments<br/>Auto-Discovery + Draft Linking<br/>Feed 1 call"| PROCESS["Process<br/>(Collect → Enrich → Detect)"]
     PROCESS --> SUMMARY["Summary<br/>to Human"]
     SUMMARY --> UPDATE["last_session_date<br/>= now"]
 ```
@@ -79,9 +79,11 @@ graph LR
     subgraph "Stage 1: COLLECT"
         DC["data-collector<br/>(haiku)"]
         N["Notifications<br/>1 API call"]
-        A["Active Post<br/>Analytics"]
+        A["Active Post<br/>Analytics + Comments"]
+        AD["Auto-Discovery<br/>+ Draft Linking"]
         DC --> N
         DC --> A
+        DC --> AD
     end
 
     subgraph "Stage 2: ENRICH"
@@ -123,10 +125,15 @@ stateDiagram-v2
     }
 
     state "Measurement Phase (Lifecycle)" as measurement {
-        [*] --> Active: Published
-        Active --> Cooling: Day 7
-        Cooling --> Archived: Day 14
+        [*] --> Active: Published + Auto-Discovery
+        Active --> Cooling: Day 7 + Snapshot 2
+        Cooling --> Archived: Day 14 + Snapshot 3
     }
+
+    note right of measurement
+        Auto-Discovery links drafts/ to data/posts/
+        Snapshots record metrics in post body
+    end note
 ```
 
 ## Human-in-the-Loop Gates
@@ -223,68 +230,76 @@ erDiagram
     Strategy ||--o{ Posts : "guides"
     Competitors ||--o{ Patterns : "Learnings"
     FeedInsights ||--o{ Signals : "Opportunities"
+    FeedInsights ||--o{ Comments : "Comment on"
     ICPProfile ||--o{ Strategy : "sharpens"
     Reports ||--o{ Strategy : "Trends"
 
     Posts {
-        string Title
-        select Status
-        select Lifecycle
-        number Reactions
-        number Engagement_Rate
-        string URN
+        string title
+        select status
+        select lifecycle
+        number reactions
+        number engagement_rate
+        string urn
     }
 
     Contacts {
-        string Name
-        number Warm_Score
-        select ICP_Match
-        select Score
-        date Follow_up_Date
+        string name
+        number warm_score
+        select icp_match
+        select score
+        date follow_up_date
     }
 
     Patterns {
-        string Name
-        select Confidence
-        select Status
-        number Success_Rate
+        string name
+        select confidence
+        select status
+        number success_rate
     }
 
     Strategy {
-        string Version
-        select Status
-        text Content
+        string version
+        select status
+        text body
     }
 
     Competitors {
-        string Name
-        number Avg_ER
-        text Content_Gaps
+        string name
+        number avg_engagement_rate
+        text content_gaps
     }
 
     Signals {
-        select Type
-        select Priority
-        select Status
-        string Action
+        select type
+        select priority
+        select status
+        string action
     }
 
     FeedInsights {
-        string Topic
-        number Momentum_Score
-        boolean Comment_Opportunity
+        string topic
+        number momentum_score
+        boolean comment_opportunity
+    }
+
+    Comments {
+        string target_post_urn
+        string target_author
+        date comment_date
+        select visibility_gained
     }
 
     ICPProfile {
-        select Dimension
-        string Value
-        number Engagement_Count
+        select dimension
+        string value
+        number engagement_count
     }
 
     Reports {
-        string Week
-        number Total_Reactions
-        number Follower_Change
+        string week
+        number total_reactions
+        number follower_change
     }
 ```
 
@@ -306,6 +321,8 @@ The system **never** reprocesses everything from scratch. Instead:
 3. Notifications = most efficient source (1 API call = 80% of deltas)
 4. Post lifecycle limits API calls: Archived posts are never touched again
 5. Warm Score decay is calculated locally (no API needed)
+6. Auto-discovery links new published posts to existing drafts
+7. Snapshot metrics are recorded in post body at Day 3, 7, 14
 
 ## Setup = Warm Start
 
