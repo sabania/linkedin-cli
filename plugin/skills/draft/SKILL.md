@@ -3,11 +3,12 @@ name: draft
 description: "Create a new LinkedIn post or strategic comment. Uses brand voice, strategy, and patterns. +Comment draft mode."
 user-invocable: true
 allowed-tools:
-  - Bash
   - Read
   - Write
   - Edit
   - Agent
+  - Glob
+  - Grep
 ---
 
 # /draft — Create Post or Comment
@@ -30,7 +31,7 @@ Creates LinkedIn post drafts or strategic comments.
 
 1. **Determine topic:**
    - Argument provided? → Use that topic
-   - No argument? → Oldest idea with status "Approved" from data store
+   - No argument? → Oldest idea with status "Approved" from drafts/
    - No approved idea? → Ask user or suggest `/ideas`
 
 2. **Start `content-writer` agent** with the topic
@@ -40,11 +41,11 @@ Creates LinkedIn post drafts or strategic comments.
 4. **Feedback loop:**
    - User can suggest changes
    - Iteratively improve post
-   - When satisfied: Set status to "Draft", .md file saved
+   - When satisfied: Save to drafts/draft-{date}-{slug}.md
 
 ### Comment Draft (/draft comment <urn>)
 
-1. **Load target post** (from Feed Insights or via URN)
+1. **Load target post** (from data/feed-insights/ or via URN)
 2. **Start `content-writer` agent** in comment mode:
    - Reference the post content (not generic)
    - Bring in own expertise

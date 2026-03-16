@@ -8,6 +8,8 @@ allowed-tools:
   - Write
   - Edit
   - Agent
+  - Glob
+  - Grep
 ---
 
 # /report — Weekly Report
@@ -27,7 +29,7 @@ Creates a weekly performance report.
 
 1. **Update data** via `data-collector` agent (fetch current numbers)
 2. **Create report** via `report-builder` agent
-3. **Display report** and save in data store
+3. **Display report** and save as data/reports/{year}-cw{week}.md
 
 ## Rules
 

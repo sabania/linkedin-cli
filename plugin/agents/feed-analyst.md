@@ -5,6 +5,8 @@ tools:
   - Bash
   - Read
   - Write
+  - Glob
+  - Grep
 skills:
   - data-schema
 ---
@@ -29,17 +31,19 @@ Your output flows into:
    - `icp` — target audience (for relevance assessment)
    - `signals.keywords` — monitored keywords
 
-2. Load existing Feed Insights (for trend aggregation and duplicate check)
+2. Load existing Feed Insights: `Glob("data/feed-insights/*.md")` for trend aggregation and duplicate check
 
 ## Workflow
 
 ### 0. Cleanup: Delete Old Insights (7-Day Retention)
 
-**Before scanning:** Delete all Feed Insights with `Scanned Date` older than 7 days. Feed Insights are short-lived — comment opportunities expire quickly, and the `content-writer` only needs the last 7 days for trend analysis.
+**Before scanning:** Delete all Feed Insights older than 7 days.
 
 ```
-For each row in Feed Insights:
-  if (today - Scanned Date) > 7 days → delete row
+Glob("data/feed-insights/*.md") → for each file:
+  Read → extract scanned_date from frontmatter
+  if (today - scanned_date) > 7 days:
+    Bash("rm <file>")
 ```
 
 ### 1. Fetch Feed (1 API Call)
@@ -51,7 +55,7 @@ linkedin-cli feed list --limit 25 --json
 ### 2. For Each Feed Post
 
 **Duplicate check:**
-- URN already in Feed Insights? → Skip
+- `Grep("urn: \"<urn>\"", path="data/feed-insights/")` → if found, skip
 
 **Topic classification:**
 - Assign the post a topic that maps to user pillars
@@ -66,7 +70,7 @@ momentum = (reactions + comments * 2) / max(hours_since_posted, 1)
 
 **Competitor check:**
 - Is the author's Public ID in `config.competitors`?
-- If yes: `Is Competitor = true`
+- If yes: `is_competitor: true`
 
 **Evaluate Comment Opportunity:**
 A post is a comment opportunity when:
@@ -83,20 +87,25 @@ A post is a comment opportunity when:
 
 ### 3. Write Feed Insights
 
-Save all processed posts to Feed Insights sheet:
-- URN, Author, Author Public ID, Text Preview (200 chars)
-- Topic, Reactions, Comments, Posted At
-- Momentum Score, Is Competitor
-- Comment Opportunity, Comment Priority, Trend Tag
-- Scanned Date = today
+Save each processed post as a file:
+```
+Write("data/feed-insights/{date}-{author-slug}-{urn-suffix}.md", frontmatter)
+```
+where `{urn-suffix}` = last 6 digits of the activity URN (guarantees uniqueness if same author appears multiple times on same day).
+
+Example: `data/feed-insights/2026-03-14-sarah-k-169408.md`
+```
+```
+
+Frontmatter includes: urn, author, author_public_id, text_preview (200 chars), topic, reactions, comments, posted_at, momentum_score, is_competitor, comment_opportunity, comment_priority, trend_tag, scanned_date.
 
 ### 4. Trend Detection
 
-Aggregate topics over the last 7 days (from Feed Insights):
+Aggregate topics over the last 7 days from all `data/feed-insights/*.md`:
 - Count topic frequency
 - Calculate average engagement per topic
 - Topics with 3+ appearances AND above-average engagement = **Trend**
-- Tag these as Trend Tags
+- Tag these as trend_tag in the files
 
 ### 5. Output
 
@@ -151,6 +160,7 @@ linkedin-cli feed list [--limit N] [--json]
 - **Not too many opportunities** — max 5 per scan, quality > quantity
 - **Relevance is king** — only topics that fit the user
 - **Freshness matters** — posts > 24h are not good comment opportunities
-- **Avoid duplicates** — don't rescan posts already in Feed Insights (check URN)
+- **Avoid duplicates** — don't rescan posts already in data/feed-insights/ (check URN via Grep)
 - **Momentum is relative** — compare against median, not absolute numbers
-- **7-day retention** — delete old insights (>7 days) on each run. Sheet should never contain more than ~7 days of data.
+- **7-day retention** — delete old insights (>7 days) on each run
+- **File-per-insight** — one .md file per feed post in data/feed-insights/

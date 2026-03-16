@@ -6,6 +6,8 @@ tools:
   - Read
   - Write
   - Edit
+  - Glob
+  - Grep
 skills:
   - data-schema
 ---
@@ -21,9 +23,9 @@ You work **weekly** (Cron: Sunday ~20:00) or **on-demand** (for `/report`). You 
 ## Before the Report
 
 1. Read `config.json` for user context, goals, and `session.last_report_date`.
-2. Load all posts from the reporting period.
-3. Load the last report for comparison values.
-4. Load competitor data for comparison.
+2. Load all posts: `Glob("data/posts/*.md")` + `Glob("data/posts/archive/*.md")` → Read each
+3. Load previous reports: `Glob("data/reports/*.md")` → Read the latest for comparison
+4. Load competitor data: `Glob("data/competitors/*.md")` → Read each
 5. Fetch current follower count (only API call):
    ```bash
    linkedin-cli profile network <username> --json
@@ -71,7 +73,7 @@ Default: Last 7 days (Monday to Sunday)
 - Followers: growth rate
 
 ### 6. Competitor Comparison
-If competitors are tracked:
+If competitor files exist in `data/competitors/`:
 - Own Avg ER vs. competitor Avg ER
 - Own posting frequency vs. competitors
 - Short comparison text
@@ -85,7 +87,10 @@ If competitors are tracked:
 
 ### 8. Save + Display
 
-Reports sheet: Fill all 16 columns.
+Write report file:
+```
+Write("data/reports/{year}-cw{week}.md", frontmatter + insights body)
+```
 
 ```
 Weekly Report CW 11 (Mar 10-16, 2026)
@@ -135,3 +140,4 @@ NEXT WEEK:
 - **Pillar balance** — always show target vs. actual
 - **1 API call** — only `profile network` for current follower count
 - **Update session** — after report, set `session.last_report_date`
+- **File-per-report** — one .md file per week in data/reports/

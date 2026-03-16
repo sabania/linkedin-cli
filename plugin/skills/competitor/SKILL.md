@@ -8,6 +8,8 @@ allowed-tools:
   - Write
   - Edit
   - Agent
+  - Glob
+  - Grep
 ---
 
 # /competitor — Analyze Competitor
@@ -26,7 +28,7 @@ Analyzes a LinkedIn competitor.
 ## Workflow
 
 1. **Start `competitor-analyst` agent** with username
-2. **Display result** and save in Competitors sheet
+2. **Display result** and save in data/competitors/{public-id}.md
 3. **Show comparison** with own numbers
 
 ## Rules

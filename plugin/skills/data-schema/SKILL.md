@@ -1,70 +1,142 @@
 ---
 name: data-schema
-description: Complete data schema for LinkedIn tracking. 10 sheets with all columns, types, allowed values. Agents read this skill before reading/writing data.
+description: Complete data schema for LinkedIn tracking. Markdown file-per-record with YAML frontmatter. Naming conventions, schemas for all 11 record types, Glob/Read/Write/Edit access patterns.
 user-invocable: false
 ---
 
 # Data Schema Reference
 
-The data store (format set during `/setup` — default: Excel `.xlsx`) tracks all LinkedIn marketing data. The schema below is the **default template** — users can customize it during onboarding.
+The data store uses **Markdown files with YAML frontmatter** — one file per record, organized in subdirectories under `data/`. This allows agents to use Read/Write/Edit/Glob/Grep directly with zero dependencies.
 
 **Before every data operation:**
-1. Read `config.json` → `tracking` for format, file, active sheets, runtime
-2. Read this skill for column structure
-3. Adapt your script to `tracking.runtime` (python/node/etc.)
+1. Read `config.json` → `tracking` for `data_dir` (default: `data`) and `drafts_dir` (default: `drafts`)
+2. Read this skill for frontmatter schemas and naming conventions
+3. Use Glob/Grep/Read/Write/Edit — no scripts needed
 
 ---
 
-## Sheet: Posts (33 Columns)
+## Directory Structure
 
-Tracks the entire content lifecycle from idea to analyzed. Every property that can influence performance is a column.
+```
+linkedin-cli/
+├── config.json
+├── drafts/                    # Pre-publish: ideas + drafts
+│   ├── idea-ai-agents-future.md
+│   └── draft-2026-03-14-ai-agents.md
+├── data/
+│   ├── posts/                 # Published, actively tracked (0-14 days)
+│   │   └── archive/           # Mini-summary of old posts (14+ days)
+│   ├── contacts/
+│   ├── patterns/
+│   ├── strategy/
+│   ├── reports/
+│   ├── competitors/
+│   ├── signals/
+│   ├── feed-insights/
+│   ├── icp/
+│   └── comments/
+└── plugin/
+```
 
-| Column | Type | Source | Description | Allowed Values |
-|--------|------|--------|-------------|----------------|
-| Title | text | Agent/User | Hook/first line (~80 chars) | |
-| Status | select | System/User | Content pipeline status | Idea, Approved, Draft, In Review, Ready, Scheduled, Published, Analyzed, Evolved, Rejected |
-| Lifecycle | select | Calculated | Measurement phase (orthogonal to Status) | Active, Cooling, Archived |
-| Pillar | select | Agent/User | Content pillar | *From config.json → content.pillars* |
-| Hook Type | select | Agent | Style of the first line | Statistics, Personal Story, Question, Surprising Fact, Contrarian, How-To, List, Problem-Solution, Behind-Scenes |
-| Format | select | Agent/CLI | Content format | Text, Image, Video, Document, Carousel, Poll |
-| Content Type | select | Agent | Content category | Educational, Case-Study, Opinion, Behind-Scenes, How-To, News-Commentary, Inspirational, Controversial |
-| Language | select | Agent | Language | DE, EN, *other* |
-| Length Category | select | Calculated | Length category | Short (<500 chars), Medium (500-1500), Long (>1500) |
-| Char Count | number | Calculated | Exact character count | |
-| CTA Type | select | Agent | Call-to-action at the end | Question, Statement, Link, None |
-| Hashtag Count | number | Calculated | Number of hashtags | |
-| Hashtags | text | Calculated | Comma-separated | |
-| Emoji Count | number | Calculated | Number of emojis | |
-| Has Personal Reference | boolean | Agent | References own project/experience | true, false |
-| Is Timely | boolean | Agent | Current event vs. evergreen | true, false |
-| LinkedIn URL | text | User | Post URL after publishing | |
-| URN | text | CLI | LinkedIn Activity URN | `urn:li:activity:...` |
-| Published Date | date | User/CLI | Publication date | ISO 8601 |
-| Published Day | select | Calculated | Day of the week | Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday |
-| Published Hour | number | Calculated | Time of day (0-23) | |
-| Reactions | number | CLI | Current reactions | |
-| Comments | number | CLI | Current comments | |
-| Shares | number | CLI | Current shares | |
-| Impressions | number | CLI | From Analytics | |
-| Members Reached | number | CLI | Unique viewers (Analytics) | |
-| Engagement Rate | number | Calculated | (Reactions+Comments+Shares)/Impressions*100 | |
-| Followers Gained | number | CLI | New followers from this post | |
-| Profile Views From Post | number | CLI | Profile visits from this post | |
-| Top Demographics | text | CLI | JSON: Top job titles, industries, seniority from Analytics | |
-| Last Snapshot | number | System | Which measurement (1-3) | 1, 2, 3 |
-| Snapshot Date | date | System | Last measurement | ISO 8601 |
-| Experiment | text | Agent | Experiment assignment | |
-| Idea Source | text | Agent | Where the idea came from | Feed Trend, Competitor Gap, Repurpose, Pattern, News, Experiment, Audience Request, Manual |
-| Draft Path | text | System | Path to .md draft file | Relative to CWD |
+## File Naming Conventions
 
-### Status Flow
+| Collection | Pattern | Example |
+|---|---|---|
+| Posts | `{date}-{slug}.md` | `2026-03-14-most-smbs-underestimate.md` |
+| Post Archive | same, in `archive/` | `archive/2026-02-28-ai-agents.md` |
+| Contacts | `{public-id}.md` | `anna-schmidt.md` |
+| Patterns | `{type}-{slug}.md` | `hook-question-boost-comments.md` |
+| Strategy | `{version}.md` | `v1.2.md` |
+| Reports | `{year}-cw{week}.md` | `2026-cw11.md` |
+| Competitors | `{public-id}.md` | `max-anderson.md` |
+| Signals | `{date}-{type}-{slug}.md` | `2026-03-14-engagement-hot-anna-schmidt.md` |
+| Feed Insights | `{date}-{author-slug}-{urn-suffix}.md` | `2026-03-14-sarah-k-169408.md` |
+| ICP | `{dimension}-{value}.md` | `job-title-cto.md` |
+| Comments | `{date}-on-{target-author-slug}-{n}.md` | `2026-03-14-on-sarah-k-1.md` |
+
+**Slug algorithm:**
+1. Take the input string (title, name, topic)
+2. Convert to lowercase
+3. Replace spaces and underscores with hyphens
+4. Remove all characters except a-z, 0-9, hyphens
+5. Collapse multiple hyphens into one
+6. Remove leading/trailing hyphens
+7. Truncate to 50 characters
+8. Remove trailing hyphen if truncation created one
+
+Example: `"Most SMBs underestimate AI!"` → `most-smbs-underestimate-ai`
+
+**URN suffix:** Last 6 digits of the activity URN (e.g., `urn:li:activity:7435982583777169408` → `169408`). Guarantees unique filenames for feed insights from the same author on the same day.
+
+---
+
+## Frontmatter Schemas
+
+### Post (full, in `data/posts/`)
+
+```yaml
+---
+title: "Most SMBs underestimate..."
+status: Published
+lifecycle: Active
+pillar: AI Praxis
+hook_type: Surprising Fact
+format: Text
+content_type: Educational
+language: EN
+length_category: Medium
+char_count: 780
+cta_type: Question
+hashtag_count: 3
+hashtags: "AI, SMB, Automation"
+emoji_count: 2
+has_personal_reference: true
+is_timely: false
+url: "https://linkedin.com/feed/update/..."
+urn: "urn:li:activity:7435982583777169408"
+published_date: 2026-03-14
+published_day: Tuesday
+published_hour: 8
+reactions: 89
+comments: 12
+shares: 3
+impressions: 3200
+members_reached: 2800
+engagement_rate: 3.2
+followers_gained: 5
+profile_views_from_post: 12
+top_demographics: '{"Job title": [{"value": "CTO", "pct": "30%"}], "Industry": [{"value": "Software", "pct": "45%"}]}'
+last_snapshot: 2
+snapshot_date: 2026-03-21
+experiment: null
+idea_source: Feed Trend
+draft_path: "drafts/draft-2026-03-14-most-smbs.md"
+---
+Notes, analysis results, or any free-text content about this post.
+```
+
+#### Allowed Values
+
+| Field | Values |
+|-------|--------|
+| status | Idea, Approved, Draft, In Review, Ready, Scheduled, Published, Analyzed, Evolved, Rejected |
+| lifecycle | Active, Cooling, Archived |
+| hook_type | Statistics, Personal Story, Question, Surprising Fact, Contrarian, How-To, List, Problem-Solution, Behind-Scenes |
+| format | Text, Image, Video, Document, Carousel, Poll |
+| content_type | Educational, Case-Study, Opinion, Behind-Scenes, How-To, News-Commentary, Inspirational, Controversial |
+| language | DE, EN, *other* |
+| length_category | Short, Medium, Long |
+| cta_type | Question, Statement, Link, None |
+| idea_source | Feed Trend, Competitor Gap, Repurpose, Pattern, News, Experiment, Audience Request, Manual |
+
+#### Status Flow
 ```
 Idea → Approved → Draft → [In Review →] Ready → [Scheduled →] Published → Analyzed → Evolved
                                                                                 ↓
 Any status can → Rejected
 ```
 
-### Snapshot Timing
+#### Snapshot Timing
 - Snapshot 1: Day 3 after publication
 - Snapshot 2: Day 7
 - Snapshot 3: Day 14 → Status changes to "Analyzed"
@@ -77,54 +149,88 @@ Orthogonal to Status (content pipeline). A post can be `Published + Active`, the
 |-------|---------------------|-------------|----------|
 | **Active** | 0-7 | Every session: Update metrics from notifications | Analytics during Morning Check |
 | **Cooling** | 7-14 | Final snapshot at day 14 | 1x Analytics call |
-| **Archived** | 14+ | Final metrics. Never touched again. | None |
+| **Archived** | 14+ | Extract to archive, delete original | None |
 
-**Automatic transitions (at session start, local):**
-```python
-for post in posts.where(status="Published"):
-    days = (today - post.published_date).days
-    if days >= 14 and post.lifecycle != "Archived":
-        post.lifecycle = "Archived"
-        post.status = "Analyzed"  # if Snapshot 3 exists
-    elif days >= 7 and post.lifecycle == "Active":
-        post.lifecycle = "Cooling"
-    elif post.lifecycle is None:
-        post.lifecycle = "Active"
+**Automatic transitions (at session start):**
+```
+For each file in data/posts/*.md:
+  Read frontmatter → published_date, lifecycle
+  days = (today - published_date)
+  if days >= 14 and lifecycle != "Archived":
+    → Extract mini-summary to data/posts/archive/{date}-{slug}.md
+    → Delete original from data/posts/
+  elif days >= 7 and lifecycle == "Active":
+    → Edit lifecycle: "Active" → "Cooling"
+  elif lifecycle is empty:
+    → Edit lifecycle: → "Active"
+```
+
+### Post Archive (minimal, in `data/posts/archive/`)
+
+When a post reaches 14+ days, extract a mini-summary and delete the full record. This keeps the active directory small.
+
+```yaml
+---
+title: "How I built a CLI..."
+urn: "urn:li:activity:123"
+published_date: 2026-02-28
+pillar: Side Projects
+hook_type: Personal Story
+format: Text
+content_type: Educational
+reactions: 156
+comments: 23
+impressions: 4200
+engagement_rate: 4.3
+---
 ```
 
 ---
 
-## Sheet: Contacts (23 Columns)
+### Contact (`data/contacts/{public-id}.md`)
 
-Tracks LinkedIn contacts, leads, and engagement relationships. Central sheet for audience intelligence.
+```yaml
+---
+name: Anna Schmidt
+public_id: anna-schmidt
+linkedin_url: "https://linkedin.com/in/anna-schmidt"
+headline: "CTO @ TechAG"
+company: TechAG
+industry: Software
+location: Munich, Germany
+connection_degree: 1st
+source: Post Reaction
+source_detail: "urn:li:activity:7435982583777169408"
+interaction_types: "like, comment"
+score: Hot
+warm_score: 85
+icp_match: High
+status: Engaged
+first_seen: 2026-02-15
+last_interaction: 2026-03-12
+interaction_count: 5
+follow_up_date: 2026-03-15
+last_outreach: null
+outreach_type: null
+response_status: null
+---
+Notes about this contact...
+```
 
-| Column | Type | Source | Description | Allowed Values |
-|--------|------|--------|-------------|----------------|
-| Name | text | CLI | Full name | |
-| LinkedIn URL | text | Calculated | Profile URL | |
-| Public ID | text | CLI | LinkedIn username/slug | |
-| Headline | text | CLI | Job title/headline | |
-| Company | text | CLI | Current company | |
-| Industry | text | CLI | Industry (from profile) | |
-| Location | text | CLI | Location | |
-| Connection Degree | select | CLI | Connection degree | 1st, 2nd, 3rd |
-| Source | select | System | How discovered | Post Reaction, Comment, Profile View, Invitation, Search, Competitor Engager, Feed, Manual |
-| Source Detail | text | System | Details (e.g., post URN, search term) | |
-| Interaction Types | text | System | Comma-separated | like, comment, share, view, reply, praise, interest, empathy, entertainment |
-| Score | select | Calculated | Lead temperature (from Warm Score) | Hot, Warm, Cold |
-| Warm Score | number | Calculated | Numeric score 0-100 | |
-| ICP Match | select | System | Matches Ideal Customer Profile | High, Medium, Low, None |
-| Status | select | User/System | Relationship status | New, Researched, Engaged, Contacted, Replied, Connected, Dormant |
-| First Seen | date | System | First contact | ISO 8601 |
-| Last Interaction | date | System | Last interaction | ISO 8601 |
-| Interaction Count | number | System | Total number of interactions | |
-| Follow-up Date | date | System | Next follow-up | ISO 8601 |
-| Last Outreach | date | User | When last message was sent | ISO 8601 |
-| Outreach Type | select | User | Type of last outreach | Connection Request, Message, InMail, Comment Reply |
-| Response Status | select | User | Response to last outreach | Pending, Accepted, Replied, No Response |
-| Notes | text | User/Agent | Free text | |
+#### Allowed Values
 
-### Warm Score Calculation
+| Field | Values |
+|-------|--------|
+| connection_degree | 1st, 2nd, 3rd |
+| source | Post Reaction, Comment, Profile View, Invitation, Search, Competitor Engager, Feed, Manual |
+| interaction_types | like, comment, share, view, reply, praise, interest, empathy, entertainment |
+| score | Hot, Warm, Cold |
+| icp_match | High, Medium, Low, None |
+| status | New, Researched, Engaged, Contacted, Replied, Connected, Dormant |
+| outreach_type | Connection Request, Message, InMail, Comment Reply |
+| response_status | Pending, Accepted, Replied, No Response |
+
+#### Warm Score Calculation
 ```
 +10  per reaction on own post
 +25  per comment on own post
@@ -136,38 +242,47 @@ Tracks LinkedIn contacts, leads, and engagement relationships. Central sheet for
 Cap: 100
 ```
 
-### Score Derivation from Warm Score
+#### Score Derivation from Warm Score
 - **Hot**: Warm Score >= 60
 - **Warm**: Warm Score 25-59
 - **Cold**: Warm Score < 25
 
-### Dormant Detection
+#### Dormant Detection
 Contact with Status "Connected" and Last Interaction > 90 days → Status becomes "Dormant"
 
 ---
 
-## Sheet: Patterns (14 Columns)
+### Pattern (`data/patterns/{type}-{slug}.md`)
 
-Detected content patterns with confidence level. Basis for data-driven strategy.
+```yaml
+---
+name: "Question hooks boost comments"
+type: Hook
+dimension: Question
+dimension_2: null
+avg_reactions: 67
+avg_comments: 14
+avg_engagement_rate: 3.8
+avg_impressions: 2900
+sample_size: 8
+success_rate: 45
+confidence: Medium
+status: Active
+discovery_date: 2026-03-01
+---
+Notes: Hypothesis confirmed across 8 posts. Question hooks produce 2x comments vs. baseline.
+Confounds: Most question posts were published on Tuesday.
+```
 
-| Column | Type | Source | Description | Allowed Values |
-|--------|------|--------|-------------|----------------|
-| Name | text | Agent | Pattern name | e.g. "Question hooks boost comments" |
-| Type | select | Agent | Pattern category | Hook, Format, Topic, Timing, Length, CTA, Content-Type, Combination |
-| Dimension | text | Agent | Tested value | e.g. "Question", "Video", "Tuesday" |
-| Dimension 2 | text | Agent | For combination patterns | e.g. "Carousel" in "Question + Carousel" |
-| Avg Reactions | number | Calculated | Average reactions | |
-| Avg Comments | number | Calculated | Average comments | |
-| Avg Engagement Rate | number | Calculated | Average engagement rate | |
-| Avg Impressions | number | Calculated | Average impressions | |
-| Sample Size | number | Calculated | Number of posts | |
-| Success Rate | number | Calculated | % above baseline | |
-| Confidence | select | Calculated | Statistical confidence | Low (<5 Posts), Medium (5-15), High (>15) |
-| Status | select | Agent | Pattern status | Active, Testing, Deprecated, Disproven |
-| Discovery Date | date | System | When first detected | ISO 8601 |
-| Notes | text | Agent | Hypothesis, confounds | |
+#### Allowed Values
 
-### Pattern Dimensions for Analysis
+| Field | Values |
+|-------|--------|
+| type | Hook, Format, Topic, Timing, Length, CTA, Content-Type, Combination |
+| confidence | Low, Medium, High |
+| status | Active, Testing, Deprecated, Disproven |
+
+#### Pattern Dimensions for Analysis
 
 | Dimension | Values | Example |
 |-----------|--------|---------|
@@ -185,91 +300,119 @@ Detected content patterns with confidence level. Basis for data-driven strategy.
 
 ---
 
-## Sheet: Strategy (5 Columns — unchanged)
+### Strategy (`data/strategy/{version}.md`)
 
-Versioned content strategy. Only one row with Status=Active.
+The body IS the strategy text.
 
-| Column | Type | Description | Allowed Values |
-|--------|------|-------------|----------------|
-| Version | text | Version identifier | e.g. "v1.0", "v2.1" |
-| Status | select | Whether active | Active, Archived |
-| Valid From | date | Valid from | ISO 8601 |
-| Changes | text | What changed | |
-| Content | text | Full strategy text | Markdown |
+```yaml
+---
+version: v1.2
+status: Active
+valid_from: 2026-03-03
+changes: "Added question hooks as proven pattern"
+---
+## Goals
+Thought leadership + lead generation...
+
+## Target Audience (ICP)
+CTOs and VP Engineering in Software/Manufacturing, DACH region...
+
+## Content Pillars
+- AI Praxis (40%): Practical AI applications
+- Side Projects (30%): Building in public
+...
+
+## Proven Patterns
+- Question hooks: 2x comments (n=15)
+...
+
+## Avoid
+- Video format (disproven, n=8)
+```
+
+Only one file should have `status: Active` at a time.
 
 ---
 
-## Sheet: Reports (16 Columns)
+### Report (`data/reports/{year}-cw{week}.md`)
 
-Weekly performance reports with KPIs and trends.
+```yaml
+---
+week: "CW 11 2026"
+period_start: 2026-03-10
+period_end: 2026-03-16
+posts_count: 3
+total_reactions: 156
+total_comments: 23
+total_impressions: 4200
+avg_reactions: 52
+avg_comments: 7.7
+avg_engagement_rate: 3.8
+followers: 1234
+follower_change: 12
+top_post_urn: "urn:li:activity:7435982583777169408"
+pillar_distribution: '{"AI Praxis": 2, "Side Projects": 1}'
+competitor_comparison: "Your Avg ER: 3.8% | @competitor-1: 2.1%"
+---
+## Insights
+- Question hooks still on top (pattern confirmed)
+- "Behind the Scenes" pillar missing — plan for next week
+- Tuesday posts perform 30% above average
 
-| Column | Type | Description |
-|--------|------|-------------|
-| Week | text | e.g. "CW 11 2026" |
-| Period Start | date | Period start |
-| Period End | date | Period end |
-| Posts Count | number | Published posts |
-| Total Reactions | number | Sum of reactions |
-| Total Comments | number | Sum of comments |
-| Total Impressions | number | Sum of impressions |
-| Avg Reactions | number | Average per post |
-| Avg Comments | number | Average per post |
-| Avg Engagement Rate | number | Average engagement rate |
-| Followers | number | Current count |
-| Follower Change | number | +/- since last report |
-| Top Post URN | text | Best post of the week |
-| Pillar Distribution | text | JSON: Pillar distribution |
-| Competitor Comparison | text | Short comparison text |
-| Insights | text | Key learnings |
+## Next Week
+- Plan 1x Behind the Scenes post
+- Continue experiment hook-type-v1
+```
 
 ---
 
-## Sheet: Competitors (18 Columns)
+### Competitor (`data/competitors/{public-id}.md`)
 
-Competitor tracking and benchmarking.
-
-| Column | Type | Source | Description |
-|--------|------|--------|-------------|
-| Name | text | User | Name |
-| Public ID | text | User/CLI | LinkedIn username |
-| LinkedIn URL | text | Calculated | Profile URL |
-| Headline | text | CLI | Their headline |
-| Followers | number | CLI | Follower count |
-| Follower Change | number | Calculated | Delta since last analysis |
-| Posting Frequency | text | Agent | Posts per week |
-| Avg Reactions | number | Calculated | Average per post |
-| Avg Comments | number | Calculated | Average per post |
-| Avg Engagement Rate | number | Calculated | Engagement rate |
-| Top Format | select | Agent | Best content format |
-| Top Hook Type | select | Agent | Most common hook style |
-| Content Pillars | text | Agent | Their topic mix |
-| Shared Engagers | number | Agent | People who engage with both |
-| Content Gaps | text | Agent | Topics they have that we don't |
-| Last Analyzed | date | System | Last analysis |
-| Analysis Count | number | System | How often analyzed |
-| Notes | text | Agent | Key learnings |
+```yaml
+---
+name: Max Anderson
+public_id: max-anderson
+linkedin_url: "https://linkedin.com/in/max-anderson"
+headline: "Head of AI @ TechCorp"
+followers: 5200
+follower_change: 120
+posting_frequency: "4x/week"
+avg_reactions: 55
+avg_comments: 12
+avg_engagement_rate: 2.8
+top_format: Carousel
+top_hook_type: Question
+content_pillars: "AI, Leadership, Product"
+shared_engagers: 23
+content_gaps: "Team Leadership — they post about it, we don't"
+last_analyzed: 2026-03-14
+analysis_count: 3
+---
+Notes: Strong on carousels. Question hooks are their top format.
+Inverse gap: We cover Open Source, they don't.
+```
 
 ---
 
-## Sheet: Signals (11 Columns)
+### Signal (`data/signals/{date}-{type}-{slug}.md`)
 
-Trigger events that prompt actions. Signal inbox for daily work.
+```yaml
+---
+date: 2026-03-14
+type: engagement_hot
+contact_name: Anna Schmidt
+contact_public_id: anna-schmidt
+headline: "CTO @ TechAG"
+priority: High
+action: outreach
+action_detail: "Reached Warm Score of 72 after 5 interactions"
+status: New
+source: "urn:li:activity:7435982583777169408"
+---
+Additional context or notes.
+```
 
-| Column | Type | Source | Description | Allowed Values |
-|--------|------|--------|-------------|----------------|
-| Date | date | System | When detected | ISO 8601 |
-| Type | select | System | Signal type | profile_view, engagement_hot, repeat_engagement, job_change, keyword_mention, competitor_post, new_follower_icp, dormant_reactivation, comment_opportunity, funding_signal |
-| Contact Name | text | System | Affected person | |
-| Contact Public ID | text | System | For linking | |
-| Headline | text | System | Context | |
-| Priority | select | Calculated | Urgency | High, Medium, Low |
-| Action | select | System | Recommended action | follow_up, connect, comment, outreach, research, monitor |
-| Action Detail | text | Agent | Concrete recommendation | |
-| Status | select | User/System | Processing status | New, Acknowledged, Acted, Dismissed, Expired |
-| Source | text | System | What triggered it (URN, search, etc.) | |
-| Notes | text | Agent | Additional context | |
-
-### Signal Types and Default Priority
+#### Signal Types and Default Priority
 
 | Type | Priority | Trigger | Recommended Action |
 |------|----------|---------|-------------------|
@@ -284,7 +427,7 @@ Trigger events that prompt actions. Signal inbox for daily work.
 | competitor_post | Low | New post from competitor | monitor |
 | funding_signal | Medium | Company posting many jobs / growing | research |
 
-### Signal Lifecycle
+#### Signal Lifecycle
 ```
 Detected → New → Acknowledged → Acted / Dismissed
                                     ↓
@@ -293,54 +436,64 @@ New → Expired (after 7 days without action)
 
 ---
 
-## Sheet: Feed Insights (14 Columns)
+### Feed Insight (`data/feed-insights/{date}-{author-slug}-{urn-suffix}.md`)
 
-Analyzed feed posts for trend detection and comment intelligence.
+```yaml
+---
+urn: "urn:li:activity:..."
+author: Sarah K.
+author_public_id: sarah-k
+text_preview: "The future of AI agents is..."
+topic: AI Agents
+reactions: 89
+comments: 15
+posted_at: 2026-03-14T09:30:00
+momentum_score: 45.3
+is_competitor: false
+comment_opportunity: true
+comment_priority: High
+trend_tag: "AI Agents"
+scanned_date: 2026-03-14
+---
+```
 
-| Column | Type | Source | Description |
-|--------|------|--------|-------------|
-| URN | text | CLI | Post URN |
-| Author | text | CLI | Who posted |
-| Author Public ID | text | CLI | For linking |
-| Text Preview | text | CLI | First 200 characters |
-| Topic | text | Agent | Detected topic (AI-classified, maps to own pillars + "Other") |
-| Reactions | number | CLI | Reaction count |
-| Comments | number | CLI | Comment count |
-| Posted At | date | CLI | Publication time |
-| Momentum Score | number | Calculated | `(reactions + comments*2) / max(hours_since_post, 1)` |
-| Is Competitor | boolean | System | Is a tracked competitor |
-| Comment Opportunity | boolean | Agent | Worth commenting on |
-| Comment Priority | select | Agent | Prioritization | High, Medium, Low |
-| Trend Tag | text | Agent | Trending topic tag |
-| Scanned Date | date | System | When scanned |
-
-### Momentum Score
-Measures how fast a post collects engagement:
+#### Momentum Score
 ```
 momentum = (reactions + comments * 2) / max(hours_since_posted, 1)
 ```
 High score + relevant topic + young post = comment opportunity.
 
-### Trend Detection
-Topic tags are aggregated over 7 days. Topics with 3+ appearances and above-average engagement = trend → feeds into `/ideas`.
+#### Trend Detection
+Topic tags aggregated over 7 days. Topics with 3+ appearances and above-average engagement = trend → feeds into `/ideas`.
+
+#### 7-Day Retention
+Feed Insights older than 7 days are deleted on each scan.
 
 ---
 
-## Sheet: ICP Profile (7 Columns)
+### ICP Profile (`data/icp/{dimension}-{value}.md`)
 
-Ideal Customer Profile — sharpened over time from engagement data.
+```yaml
+---
+dimension: Job Title
+value: CTO
+engagement_count: 45
+conversion_rate: 12.5
+source: Post Demographics
+confidence: High
+last_updated: 2026-03-14
+---
+```
 
-| Column | Type | Source | Description | Allowed Values |
-|--------|------|--------|-------------|----------------|
-| Dimension | select | System | Profile dimension | Job Title, Industry, Seniority, Company Size, Location, Function |
-| Value | text | Agent | Concrete value | e.g. "CTO", "Software", "DACH" |
-| Engagement Count | number | Calculated | How many engagers match | |
-| Conversion Rate | number | Calculated | % that became hot contacts | |
-| Source | text | System | Where the data comes from | Post Demographics, Engager Profiles, Manual |
-| Confidence | select | Calculated | Data confidence | Low, Medium, High |
-| Last Updated | date | System | Last update | ISO 8601 |
+#### Allowed Values
 
-### ICP Sharpening
+| Field | Values |
+|-------|--------|
+| dimension | Job Title, Industry, Seniority, Company Size, Location, Function |
+| source | Post Demographics, Engager Profiles, Manual |
+| confidence | Low, Medium, High |
+
+#### ICP Sharpening
 1. Initial: User defines target ICP during setup
 2. Post demographics (from `posts analytics --json`) show who actually engages
 3. Engager profiles show which titles/industries interact
@@ -349,27 +502,44 @@ Ideal Customer Profile — sharpened over time from engagement data.
 
 ---
 
-## Sheet: Comment Tracking (9 Columns)
+### Comment Tracking (`data/comments/{date}-on-{target-author-slug}-{n}.md`)
 
-Tracks strategic comments on other people's posts.
+```yaml
+---
+target_post_urn: "urn:li:activity:..."
+target_author: Sarah K.
+target_author_public_id: sarah-k
+comment_text: "Great point about AI agents..."
+comment_date: 2026-03-14
+target_post_reactions: 89
+visibility_gained: High
+new_connections_from: 2
+---
+Notes about this comment's impact.
+```
 
-| Column | Type | Source | Description |
-|--------|------|--------|-------------|
-| Target Post URN | text | User/Agent | Where commented |
-| Target Author | text | Agent | Whose post |
-| Target Author Public ID | text | Agent | For linking |
-| Comment Text | text | User | What was commented |
-| Comment Date | date | User | When |
-| Target Post Reactions | number | CLI | How big the target post was |
-| Visibility Gained | select | Agent | Estimated visibility (High/Medium/Low) |
-| New Connections From | number | User | Resulting new connections |
-| Notes | text | User | Free text |
+---
+
+## Post Retention (Sliding Window)
+
+| Where | What | Max Files |
+|-------|------|-----------|
+| `drafts/` | Ideas + Drafts (pre-publish) | ~15 active |
+| `data/posts/` | Active + Cooling (0-14 days) | ~15-20 |
+| `data/posts/archive/` | Analyzed posts (mini-summary) | Grows, but small files |
+
+**Lifecycle:**
+1. `/auto` discovers new published post via CLI API
+2. Creates `data/posts/{date}-{slug}.md` (lifecycle: Active)
+3. Day 7 → Edit lifecycle to Cooling
+4. Day 14 → Extract patterns/baseline → Write mini-summary to `archive/` → Delete original
+5. Ideas in drafts/ older than 30 days → suggest cleanup
+
+**Auto-discovery:** `linkedin-cli profile posts <username> --limit 5 --json`, check URN against existing files via Grep, create new record if not found.
 
 ---
 
 ## config.json Session & Lifecycle Block
-
-In addition to the existing config fields (`linkedin`, `goals`, `icp`, `content`, `competitors`, `signals`, `tracking`, `environment`), the config contains:
 
 ```json
 {
@@ -399,107 +569,70 @@ In addition to the existing config fields (`linkedin`, `goals`, `icp`, `content`
 | `lifecycle.active_days` | number | Days until Active → Cooling (default: 7) |
 | `lifecycle.cooling_days` | number | Days until Cooling → Archived (default: 14) |
 
-**Delta calculation at session start:**
-```python
-from datetime import datetime
-last = datetime.fromisoformat(config["session"]["last_session_date"])
-delta = datetime.now() - last
-# → Only fetch data since last_session_date
-# → Warm Score decay: -5 * (delta.days / 7)
-# → Calculate lifecycle transitions for all Published posts
-```
-
 ---
 
 ## Data Access Patterns
 
-### Reading Excel (Python)
-```python
-import openpyxl
-
-wb = openpyxl.load_workbook("linkedin-data.xlsx")
-ws = wb["Posts"]
-headers = [cell.value for cell in ws[1]]
-records = []
-for row in ws.iter_rows(min_row=2, values_only=True):
-    if all(v is None for v in row):
-        continue
-    records.append(dict(zip(headers, row)))
+### Read all records
+```
+Glob("data/posts/*.md") → list of files
+For each file: Read(file) → parse YAML frontmatter
 ```
 
-### Writing/Updating Excel (Python)
-```python
-import openpyxl
-
-wb = openpyxl.load_workbook("linkedin-data.xlsx")
-ws = wb["Posts"]
-headers = [cell.value for cell in ws[1]]
-
-# Append new row
-ws.append(["My Post Title", "Idea", "AI Praxis", ...])
-
-# Update existing row (find by URN)
-urn_col = headers.index("URN") + 1
-for row in ws.iter_rows(min_row=2):
-    if row[urn_col - 1].value == target_urn:
-        row[headers.index("Reactions")].value = new_reactions
-        break
-
-wb.save("linkedin-data.xlsx")
+### Find by field
+```
+Grep("urn: \"urn:li:activity:123\"", path="data/posts/") → matching file
 ```
 
-### Creating Excel with all Sheets (Python)
-```python
-import openpyxl
-
-SCHEMA = {
-    "Posts": ["Title", "Status", "Lifecycle", "Pillar", ...],  # 33 columns
-    "Contacts": ["Name", "LinkedIn URL", ...],     # 23 columns
-    "Patterns": ["Name", "Type", ...],             # 14 columns
-    "Strategy": ["Version", "Status", ...],        # 5 columns
-    "Reports": ["Week", "Period Start", ...],      # 16 columns
-    "Competitors": ["Name", "Public ID", ...],     # 18 columns
-    "Signals": ["Date", "Type", ...],              # 11 columns
-    "Feed Insights": ["URN", "Author", ...],       # 14 columns
-    "ICP Profile": ["Dimension", "Value", ...],    # 7 columns
-    "Comment Tracking": ["Target Post URN", ...],  # 9 columns
-}
-
-wb = openpyxl.Workbook()
-wb.remove(wb.active)
-for sheet_name, headers in SCHEMA.items():
-    ws = wb.create_sheet(sheet_name)
-    ws.append(headers)
-wb.save("linkedin-data.xlsx")
+### Create record
+```
+Write("data/contacts/anna-schmidt.md", "---\nname: Anna Schmidt\n...\n---\nNotes...")
 ```
 
-### Querying (Python)
-```python
-# Published posts sorted by engagement rate
-published = sorted(
-    [r for r in posts if r["Status"] == "Published"],
-    key=lambda r: r.get("Engagement Rate") or 0,
-    reverse=True
-)
-
-# Hot contacts with pending follow-up
-from datetime import date
-hot_followups = [
-    r for r in contacts
-    if r.get("Score") == "Hot"
-    and r.get("Follow-up Date")
-    and r["Follow-up Date"] <= date.today()
-]
-
-# New signals
-new_signals = [s for s in signals if s.get("Status") == "New"]
-high_priority = [s for s in new_signals if s.get("Priority") == "High"]
-
-# Trending topics from feed
-from collections import Counter
-topics = Counter(f.get("Topic") for f in feed_insights if f.get("Topic"))
-trending = [t for t, count in topics.most_common(5) if count >= 3]
-
-# Active patterns with high confidence
-proven = [p for p in patterns if p["Status"] == "Active" and p["Confidence"] == "High"]
+### Update field
 ```
+Edit("data/contacts/anna-schmidt.md", "warm_score: 72", "warm_score: 85")
+```
+
+### Delete record
+```
+Bash("rm data/signals/2026-03-01-keyword-old-signal.md")
+```
+
+### Count records
+```
+Glob("data/contacts/*.md") → count files
+```
+
+### Find Hot Contacts
+```
+Grep("score: Hot", path="data/contacts/") → list of files
+```
+
+### Find Active Posts
+```
+Grep("lifecycle: Active", path="data/posts/") → list of files
+```
+
+### Find New Signals
+```
+Grep("status: New", path="data/signals/") → list of files
+```
+
+### Find Active Strategy
+```
+Grep("status: Active", path="data/strategy/") → matching file
+```
+
+### Check for duplicate URN
+```
+Grep("urn: \"urn:li:activity:123\"", path="data/posts/") → if found, skip
+```
+
+### Aggregate (e.g., count contacts per score)
+```
+Grep("score: Hot", path="data/contacts/", output_mode="count") → count
+Grep("score: Warm", path="data/contacts/", output_mode="count") → count
+Grep("score: Cold", path="data/contacts/", output_mode="count") → count
+```
+

@@ -1,29 +1,30 @@
 ---
 name: check
-description: "Quick status check without API calls. Shows current state from data store + session info."
+description: "Quick status check without API calls. Shows current state from data files + session info."
 user-invocable: true
 allowed-tools:
-  - Bash
   - Read
+  - Edit
   - Glob
+  - Grep
 ---
 
 # /check — Quick Status
 
-Shows the current state without API calls or updates. Only reads the data store and config.json.
+Shows the current state without API calls or updates. Only reads data files and config.json.
 
 ## Workflow
 
 1. **Load config**: `config.json` (incl. session block)
-2. **Read data store** (no agent needed, read directly):
-   - Posts: Count per status + lifecycle
-   - Contacts: Count per score
-   - Due follow-ups
-   - New signals (Status=New)
-   - Last post: When
-   - Last report: When
-   - Active strategy: Version
-   - Running experiments
+2. **Read data files** (no agent needed, read directly):
+   - Posts: `Glob("data/posts/*.md")` → count per lifecycle
+   - Post archive: `Glob("data/posts/archive/*.md")` → count
+   - Ideas/Drafts: `Glob("drafts/*.md")` → count per status
+   - Contacts: `Grep("score: Hot", path="data/contacts/")`, `Grep("score: Warm", ...)`, `Grep("score: Cold", ...)`
+   - Due follow-ups: `Grep("follow_up_date:", path="data/contacts/")` → check dates
+   - New signals: `Grep("status: New", path="data/signals/")`
+   - Active strategy: `Grep("status: Active", path="data/strategy/")`
+   - Running experiments: `Grep("experiment:", path="data/posts/")`
 
 3. **Show session info**:
    - Last session: When + how long ago
@@ -43,9 +44,8 @@ SESSION:
   Last competitor check: 8 days ago
 
 CONTENT:
-  Posts: 23 total
-    Ideas: 3 | Drafts: 1 | Published: 18 | Analyzed: 1
-    Active: 2 | Cooling: 1 | Archived: 15
+  Posts tracked: 5 active + 3 cooling + 42 archived
+  Ideas: 3 | Drafts: 1
   Last post: 1 day ago
   Strategy: v1.2 (since Mar 03)
   Experiment: hook-type-v1 (7/10 posts)
@@ -61,9 +61,19 @@ RECOMMENDATION:
   → /auto for Morning Check (18h since last session)
 ```
 
+## Signal Management (on user request)
+
+If user asks to update a signal (e.g., "mark signal as acted", "dismiss signal X"):
+1. `Grep("<search term>", path="data/signals/")` → find matching signal file
+2. Read the file to confirm it's the right signal
+3. `Edit(file, "status: New", "status: Acted")` (or Acknowledged/Dismissed as requested)
+4. Show confirmation to user
+
+This is the **ONLY write operation** /check performs — all other data is read-only.
+
 ## Rules
 
 - **No API calls** — only read local data
-- **No updates** — write nothing
+- **No updates** — write nothing (except signal status changes on explicit user request)
 - **Instant** — must finish in under 5 seconds
 - **Always show session info** — helps the user know what's current

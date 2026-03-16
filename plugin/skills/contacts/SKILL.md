@@ -3,11 +3,12 @@ name: contacts
 description: "Contacts & Leads management. Warm Scores, ICP Matching, Hot Leads, Follow-ups, Dormant Connections, Network Health. Absorbs /network as sub-command."
 user-invocable: true
 allowed-tools:
-  - Bash
   - Read
   - Write
   - Edit
   - Agent
+  - Glob
+  - Grep
 ---
 
 # /contacts — Manage Contacts
@@ -36,7 +37,10 @@ Manages LinkedIn contacts and leads with Warm Score, ICP Match, and follow-up tr
 3. Warm Scores and ICP matching
 
 ### hot
-Contacts with Score "Hot" from data store:
+Contacts with score "Hot" from data/contacts/:
+```
+Grep("score: Hot", path="data/contacts/") → Read each file
+```
 ```
 Hot Contacts (5):
 
@@ -52,7 +56,10 @@ Hot Contacts (5):
 ```
 
 ### follow-up
-Contacts with Follow-up Date <= today:
+Contacts with follow_up_date <= today:
+```
+Grep("follow_up_date:", path="data/contacts/") → Read each, check date
+```
 ```
 Due Follow-ups (2):
 
@@ -66,10 +73,16 @@ Due Follow-ups (2):
 ```
 
 ### dormant
-Connected contacts with Last Interaction > dormant_days (default 90 days)
+Connected contacts with last_interaction > dormant_days (default 90 days):
+```
+Grep("status: Dormant", path="data/contacts/") → Read each
+```
 
 ### <name>
 Search contact and show all details:
+```
+Grep("<name>", path="data/contacts/") → Read matching file
+```
 - Profile data, Warm Score, ICP Match
 - Interaction history
 - Outreach history
@@ -100,4 +113,4 @@ Network Health:
 - **Privacy** — only public LinkedIn data
 - **No spam** — outreach only with user confirmation
 - **Quality > Quantity** — better 10 Hot than 100 Cold
-- **Warm Score decay** — scores age, applied automatically during /auto
+- **Warm Score decay** — scores age, applied automatically during /auto and during standalone /contacts scan (if >24h since last session)

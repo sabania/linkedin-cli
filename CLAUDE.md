@@ -24,42 +24,43 @@ config.json contains:
 - lifecycle.active_days / cooling_days → Post lifecycle
 - content.pillars → Content strategy
 - icp → Ideal Customer Profile
-- tracking.format / file → Data store access
+- tracking.data_dir → Data directory (default: data)
 ```
 
 ## Data Structure
 
-### Data Store (10 Sheets)
+### Data Store (Markdown file-per-record in `data/`)
 
-| Sheet | Purpose |
-|-------|---------|
-| Posts (33 columns) | Content lifecycle + metrics + lifecycle (Active/Cooling/Archived) |
-| Contacts (23) | LinkedIn contacts with Warm Score + ICP Match |
-| Patterns (14) | Detected success patterns with confidence |
-| Strategy (5) | Versioned content strategy (Active/Archived) |
-| Reports (16) | Weekly performance reports |
-| Competitors (18) | Competitor tracking |
-| Signals (11) | Trigger events and opportunities |
-| Feed Insights (14) | Feed analysis, trends, comment opportunities |
-| ICP Profile (7) | Ideal Customer Profile (sharpened over time) |
-| Comment Tracking (9) | Strategic comments |
+| Directory | Purpose |
+|-----------|---------|
+| `data/posts/` | Active + Cooling posts (0-14 days) |
+| `data/posts/archive/` | Mini-summaries of archived posts (14+ days) |
+| `data/contacts/` | LinkedIn contacts with Warm Score + ICP Match |
+| `data/patterns/` | Detected success patterns with confidence |
+| `data/strategy/` | Versioned content strategy (Active/Archived) |
+| `data/reports/` | Weekly performance reports |
+| `data/competitors/` | Competitor tracking |
+| `data/signals/` | Trigger events and opportunities |
+| `data/feed-insights/` | Feed analysis, trends, comment opportunities |
+| `data/icp/` | Ideal Customer Profile (sharpened over time) |
+| `data/comments/` | Strategic comments |
 
 ### Post Lifecycle (orthogonal to Status)
 
-| Phase | Days | API Load |
-|-------|------|----------|
+| Phase | Days | What Happens |
+|-------|------|--------------|
 | Active | 0-7 | Analytics on every /auto |
 | Cooling | 7-14 | Final snapshot |
-| Archived | 14+ | None (never touched again) |
+| Archived | 14+ | Mini-summary to archive/, original deleted |
 
 ### Local Files
 
 | Path | Purpose |
 |------|---------|
 | `config.json` | Central configuration + session state |
-| `linkedin-data.xlsx` | Data store (or CSV/JSON/SQLite) |
+| `data/` | All tracking data (Markdown with YAML frontmatter) |
 | `drafts/` | Post drafts (.md) |
-| `plugin/dashboard.html` | Interactive dashboard (reads Excel live via SheetJS) |
+| `plugin/dashboard.html` | Interactive dashboard |
 
 ## Commands
 
@@ -95,7 +96,7 @@ config.json contains:
 
 1. **Delta-based** — only new data since `session.last_session_date`
 2. **Notifications first** — 1 API call = 80% of deltas
-3. **Respect lifecycle** — never touch archived posts
+3. **Respect lifecycle** — archive posts at day 14, never touch archived
 4. **Load config** before every operation
 5. **Load active strategy** before content creation
 6. **Update patterns** after analyses

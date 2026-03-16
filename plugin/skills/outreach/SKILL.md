@@ -8,6 +8,8 @@ allowed-tools:
   - Write
   - Edit
   - Agent
+  - Glob
+  - Grep
 ---
 
 # /outreach — Outreach Message
@@ -24,7 +26,7 @@ Generates a personalized message for a LinkedIn contact.
 
 ## Workflow
 
-1. **Load contact** from data store (name or public ID)
+1. **Load contact**: `Grep("<name-or-id>", path="data/contacts/")` → Read matching file
 2. **Start `content-writer` agent** in outreach mode:
    - Fetch profile data
    - Use shared interaction as conversation hook

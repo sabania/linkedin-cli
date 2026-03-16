@@ -3,11 +3,12 @@ name: evolve
 description: "Evolve content strategy. Orchestrates strategy-evolver agent. Human gate for new versions. Weekly during Weekly Review or on-demand."
 user-invocable: true
 allowed-tools:
-  - Bash
   - Read
   - Write
   - Edit
   - Agent
+  - Glob
+  - Grep
 ---
 
 # /evolve — Evolve Strategy
@@ -27,7 +28,7 @@ Evolves the content strategy based on patterns, ICP data, competitor insights, a
 
 1. **Start `strategy-evolver` agent** (opus model — the Head of Strategy)
 
-2. **Agent analyzes:**
+2. **Agent analyzes** (reads data/patterns/, data/reports/, data/icp/, data/competitors/):
    - New patterns since last evolve
    - ICP delta (target vs. actual audience)
    - Competitor learnings
@@ -59,7 +60,7 @@ Evolves the content strategy based on patterns, ICP data, competitor insights, a
    ```
 
 5. **Human Gate:**
-   - **User confirms** → Archive old strategy, activate new one, update CLAUDE.md
+   - **User confirms** → Archive old strategy, write new version to data/strategy/, update CLAUDE.md
    - **User rejects** → Current strategy stays, document feedback
    - **User modifies** → Incorporate adjustments, present again
 

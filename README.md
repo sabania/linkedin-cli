@@ -93,7 +93,7 @@ You get:
 
 ### Dashboard
 
-Open `plugin/dashboard.html` in your browser — interactive dashboard that reads your Excel live. Posts, Contacts, Signals, Patterns, Competitors — all at a glance.
+Open `plugin/dashboard.html` in your browser — interactive dashboard. Posts, Contacts, Signals, Patterns, Competitors — all at a glance.
 
 ### How It Learns
 
@@ -107,7 +107,7 @@ With every post, the system gets smarter. The `strategy-evolver` agent (the "bra
 
 - **The agent NEVER posts for you** — it writes drafts, you post manually
 - **No spam** — outreach messages only with your confirmation
-- **Your data stays local** — everything in an Excel file on your machine
+- **Your data stays local** — everything in Markdown files on your machine
 
 ---
 
@@ -321,6 +321,8 @@ linkedin-cli/
 │   ├── messaging.py
 │   ├── jobs.py
 │   └── company.py
+├── data/                   # Tracking data (Markdown file-per-record)
+├── drafts/                 # Post drafts (.md)
 ├── plugin/                 # LinkedIn Commander Plugin (Claude Code)
 │   ├── .claude-plugin/
 │   │   └── plugin.json

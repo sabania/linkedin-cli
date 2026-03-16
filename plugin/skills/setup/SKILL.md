@@ -99,11 +99,9 @@ Check if config.json exists in CWD.
     - Normal: High + Medium (max 10/day)
     - Everything: Show all signals
 
-### Step 7: Tracking & Environment
+### Step 7: Environment
 
-11. **Which tracking format?** Excel (.xlsx, default), CSV, JSON, SQLite
-
-12. **Check/install LinkedIn CLI**
+11. **Check/install LinkedIn CLI**
     ```bash
     linkedin-cli --help 2>/dev/null
     ```
@@ -127,17 +125,11 @@ Check if config.json exists in CWD.
 
     → After installation, check `linkedin-cli --help` again. If PATH isn't updated, remind user to restart terminal.
 
-13. **LinkedIn Login**
+12. **LinkedIn Login**
     ```bash
     linkedin-cli whoami --json
     ```
     → Extract username and profile URL from result
-
-14. **Check runtimes**
-    ```bash
-    python --version 2>/dev/null || python3 --version 2>/dev/null
-    node --version 2>/dev/null
-    ```
 
 ---
 
@@ -177,14 +169,14 @@ For each post, automatically determine:
 
 ### 2.4 Calculate Baseline
 
-```python
+```
 baseline = {
-    "median_reactions": median(all_reactions),
-    "median_comments": median(all_comments),
-    "median_impressions": median(all_impressions),
-    "median_engagement_rate": median(all_er),
-    "avg_reactions": mean(all_reactions),
-    "avg_comments": mean(all_comments),
+    median_reactions: median(all_reactions),
+    median_comments: median(all_comments),
+    median_impressions: median(all_impressions),
+    median_engagement_rate: median(all_er),
+    avg_reactions: mean(all_reactions),
+    avg_comments: mean(all_comments),
 }
 ```
 
@@ -205,14 +197,14 @@ Analysis across all classified posts:
 ### 2.6 Identify Repurposing Candidates
 
 Posts with high engagement rate but low impressions = repurposing candidates.
-→ Note in Notes field.
+→ Note in the post body.
 
 ### 2.7 Set Lifecycle
 
 All historical posts get lifecycle based on published date:
-- Last 7 days → `Lifecycle: Active`
-- 7-14 days → `Lifecycle: Cooling`
-- 14+ days → `Lifecycle: Archived`, `Status: Analyzed`
+- Last 7 days → `lifecycle: Active`
+- 7-14 days → `lifecycle: Cooling`
+- 14+ days → Write to `data/posts/archive/` with mini-summary schema
 
 ---
 
@@ -347,17 +339,14 @@ Cross-reference with our contacts:
   },
 
   "tracking": {
-    "format": "excel",
-    "file": "linkedin-data.xlsx",
-    "sheets": ["Posts", "Contacts", "Patterns", "Strategy", "Reports", "Competitors", "Signals", "Feed Insights", "ICP Profile", "Comment Tracking"],
-    "runtime": "python"
+    "format": "markdown",
+    "data_dir": "data",
+    "drafts_dir": "drafts"
   },
 
   "environment": {
     "cli_path": "",
-    "cli_version": "",
-    "python": "",
-    "node": ""
+    "cli_version": ""
   },
 
   "session": {
@@ -376,31 +365,66 @@ Cross-reference with our contacts:
 }
 ```
 
-### 5.2 Create Data Store (FILLED, not empty!)
+### 5.2 Create Directory Structure
 
-```python
-import openpyxl
-wb = openpyxl.Workbook()
-wb.remove(wb.active)
-for sheet_name in config["tracking"]["sheets"]:
-    ws = wb.create_sheet(sheet_name)
-    ws.append(HEADERS[sheet_name])  # Headers from data-schema skill
-wb.save(config["tracking"]["file"])
+```bash
+mkdir -p data/{posts/archive,contacts,patterns,strategy,reports,competitors,signals,feed-insights,icp,comments}
+mkdir -p drafts
 ```
 
-Then fill with data from Phase 2-4:
-- **Posts**: 20-30 historical posts with all calculated fields + lifecycle
-- **Contacts**: Seed from engagers with Warm Score and ICP Match
-- **Patterns**: Initial detected patterns (Low-Medium Confidence)
-- **Competitors**: Deep dive data (if analyzed)
-- **ICP Profile**: Initial dimensions from interview + first data from demographics
-- **Strategy v1.0**: First strategy based on interview + historical analysis
+### 5.3 Write Data Files (FILLED, not empty!)
 
-### 5.3 Create Strategy v1.0
+Fill with data from Phase 2-4, writing one Markdown file per record:
+
+**Posts** (Active/Cooling → `data/posts/`, Archived → `data/posts/archive/`):
+```
+For each historical post:
+  if days_since_published < 14:
+    Write("data/posts/{date}-{slug}.md", frontmatter + body)
+  else:
+    Write("data/posts/archive/{date}-{slug}.md", mini-summary frontmatter)
+```
+
+**Contacts** (file per engager):
+```
+For each engager:
+  Write("data/contacts/{public-id}.md", frontmatter with Warm Score + ICP Match)
+```
+
+**Patterns** (file per detected pattern):
+```
+For each pattern:
+  Write("data/patterns/{type}-{slug}.md", frontmatter with confidence + metrics)
+```
+
+**Competitors** (file per competitor):
+```
+For each competitor:
+  Write("data/competitors/{public-id}.md", frontmatter with all analysis data)
+```
+
+**ICP Profile** (file per dimension-value):
+```
+For each ICP dimension:
+  Write("data/icp/{dimension}-{value}.md", frontmatter with engagement data)
+```
+
+**Strategy v1.0**:
+```
+Write("data/strategy/v1.0.md", frontmatter + full strategy text)
+```
+
+### 5.4 Create Strategy v1.0
 
 Based on interview + historical analysis:
 
 ```markdown
+---
+version: v1.0
+status: Active
+valid_from: <today>
+changes: "Initial strategy based on setup analysis"
+---
 ## Goals
 <From interview answers>
 
@@ -423,14 +447,6 @@ Based on interview + historical analysis:
 <What historically performed poorly>
 ```
 
-→ In Strategy sheet as v1.0, Status: Active
-
-### 5.4 Create Folders
-
-```bash
-mkdir -p drafts
-```
-
 ### 5.5 Generate CLAUDE.md
 
 Create a CLAUDE.md in CWD. The **navigation map** for Claude Code and all agents.
@@ -449,11 +465,12 @@ Run `/setup` if config.json does not exist.
 | What | Where |
 |------|-------|
 | Configuration | config.json |
-| Data Store | [tracking.file] |
+| Data Directory | data/ |
 | Post Drafts | drafts/ |
-| Active Strategy | Data Store → Strategy Sheet (Status=Active) |
-| Hot Contacts | Data Store → Contacts Sheet (Score=Hot) |
-| Pending Signals | Data Store → Signals Sheet (Status=New) |
+| Active Strategy | data/strategy/ (status: Active) |
+| Hot Contacts | data/contacts/ (score: Hot) |
+| Pending Signals | data/signals/ (status: New) |
+| Dashboard | plugin/dashboard.html |
 
 ## Commands
 
@@ -512,7 +529,7 @@ Profile: [Name] (@[username])
 Goals: [Goals]
 ICP: [Top titles] in [industries], [region]
 Content: [n] pillars, [languages], [frequency]
-Tracking: [Format] ([file]) — [n] sheets
+Tracking: Markdown (data/) — file-per-record
 
 Historical Analysis:
   [n] posts analyzed, baseline calculated
@@ -539,19 +556,6 @@ Next steps:
 ---
 
 ## Special Cases
-
-### User wants minimal tracking
-- `tracking.sheets` contains only the chosen sheets
-- Agents that need missing sheets adapt (skip instead of crash)
-
-### User has no Python
-- Check if the linkedin-cli binary ships Python (PyInstaller → embedded Python)
-- If yes: Note path to embedded Python in environment
-- If no: Recommend installation or use JSON/CSV format
-
-### User doesn't want Excel
-- Agents read `config.json` → `tracking.format` and adapt their scripts
-- Schema stays the same, only storage format changes
 
 ### User has no historical posts
 - Phase 2 is skipped

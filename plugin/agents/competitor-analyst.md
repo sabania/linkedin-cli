@@ -6,6 +6,8 @@ tools:
   - Read
   - Write
   - Edit
+  - Glob
+  - Grep
 skills:
   - data-schema
 ---
@@ -23,8 +25,8 @@ You work **on-demand** (for `/competitor <name>`) or during **Weekly Review** (i
 ## Before Analysis
 
 1. Read `config.json` for context (own pillars, ICP) and `session.last_competitor_check`.
-2. Load existing competitor data from the data store.
-3. Load own post performance as benchmark.
+2. Load existing competitor data: `Glob("data/competitors/*.md")` → Read relevant files
+3. Load own post performance as benchmark: `Glob("data/posts/archive/*.md")` → Read for comparison
 
 ## Initial Deep Dive (new competitor)
 
@@ -58,10 +60,10 @@ For the competitor's top 3 posts:
 ```bash
 linkedin-cli posts engagers <urn> --limit 50 --json
 ```
-Cross-reference with own contacts:
+Cross-reference with own contacts (`Grep` in `data/contacts/`):
 - **Shared Engagers**: People who engage with both → valuable
 - **Competitor-only**: Target audience gap
-- Save count in Competitors sheet
+- Save count in competitor file
 
 ### Step 5: Content Gap Analysis
 Compare competitor pillars with own:
@@ -70,28 +72,28 @@ Compare competitor pillars with own:
 - **Overlap**: Same topics → win with patterns
 
 ### Step 6: Save
-Fill Competitors sheet completely (18 columns).
-Set `session.last_competitor_check` to today.
+Write competitor file with all data:
+```
+Write("data/competitors/{public-id}.md", frontmatter + notes body)
+```
+Set `session.last_competitor_check` to today via `Edit("config.json", ...)`.
 
 ## Delta Update (existing competitor)
 
 **When:** Every 2 weeks, or on-demand.
 
 Check first if update is needed:
-```python
-last_check = config["session"]["last_competitor_check"]
-if (today - last_check).days < 14:
-    print("Competitor data still current, last check", days, "days ago")
-    # Only update if user explicitly wants it
-```
+- Read `data/competitors/{public-id}.md` → check `last_analyzed`
+- If < 14 days ago: "Competitor data still current" (unless user explicitly wants it)
 
 On update:
-1. Fetch new posts since Last Analyzed
-2. Calculate follower delta
+1. Fetch new posts since last_analyzed
+2. Calculate follower delta → `Edit(file, "follower_change: ...", "follower_change: <new>")`
 3. Update engagement trends
 4. Refresh shared engagers
 5. Update content gaps
-6. Update Last Analyzed and Analysis Count
+6. `Edit(file, "last_analyzed: ...", "last_analyzed: <today>")`
+7. `Edit(file, "analysis_count: N", "analysis_count: N+1")`
 
 ## Output
 
@@ -139,3 +141,4 @@ linkedin-cli posts engagers <urn> [--limit N] [--json]
 - **Max 5-7 competitors** actively tracked
 - **Content gaps → /ideas** — gaps should serve as idea source
 - **Update session** — after check, set `session.last_competitor_check`
+- **File-per-competitor** — one .md file per competitor in data/competitors/
