@@ -143,12 +143,13 @@ class LinkedinClient:
             self.driver.execute_script(f"window.scrollTo(0, {(i + 1) * 500})")
             time.sleep(0.3)
         time.sleep(1)
-        # Language-independent: each skill has an edit/forms link, skill name is in previousSibling
         script = r'''
         var main = document.querySelector('main');
         if (!main) return [];
         var skills = [];
         var seen = {};
+
+        // Strategy 1: Edit links (own profile only)
         var editLinks = main.querySelectorAll('a[href*="/details/skills/edit/forms/"]');
         for (var i = 0; i < editLinks.length; i++) {
             var href = editLinks[i].getAttribute('href') || '';
@@ -165,6 +166,65 @@ class LinkedinClient:
                 }
             }
         }
+
+        // Strategy 2: Third-party profile — parse innerText (language-independent)
+        if (skills.length === 0) {
+            var text = main.innerText || '';
+            var lines = text.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l.length > 0; });
+
+            // Find content start: the first skill is the first line followed by an
+            // endorsement count (digit + space). This is language-independent.
+            var contentStart = 0;
+            for (var s = 0; s < Math.min(lines.length, 15); s++) {
+                if (s + 1 < lines.length && /^\d+\s/.test(lines[s + 1])) {
+                    contentStart = s;
+                    break;
+                }
+            }
+            // Fallback: skip title + up to 4 tabs (5 lines max)
+            if (contentStart === 0) {
+                contentStart = 1;
+                while (contentStart < Math.min(lines.length, 5) && lines[contentStart].length < 35) {
+                    contentStart++;
+                }
+            }
+
+            // Find footer: degree indicator "·N." marks suggested profiles section
+            var footerStart = lines.length;
+            for (var f = contentStart; f < lines.length; f++) {
+                if (/^[\u00B7·]\s*\d/.test(lines[f])) {
+                    footerStart = f;
+                    break;
+                }
+            }
+
+            // Collect skills up to footer
+            for (var i = contentStart; i < footerStart; i++) {
+                var line = lines[i];
+                // Skip endorsement count lines (start with digit + space)
+                if (/^\d+\s/.test(line)) continue;
+                // Skip very short or very long
+                if (line.length <= 1 || line.length > 80) continue;
+                if (!seen[line]) {
+                    seen[line] = true;
+                    skills.push({name: line});
+                }
+            }
+
+            // Clean trailing false positives: remove entries from the last 3 lines
+            // before footer (suggested profile name, "people also viewed" header, buttons)
+            if (footerStart < lines.length) {
+                while (skills.length > 0) {
+                    var lastName = skills[skills.length - 1].name;
+                    var isFalse = false;
+                    for (var c = Math.max(contentStart, footerStart - 3); c < footerStart; c++) {
+                        if (lines[c] === lastName) { isFalse = true; break; }
+                    }
+                    if (isFalse) skills.pop(); else break;
+                }
+            }
+        }
+
         return skills;
         '''
         return self.driver.execute_script(script) or []
@@ -578,14 +638,53 @@ class LinkedinClient:
             self.driver.execute_script(f"window.scrollTo(0, {(i + 1) * 600})")
             time.sleep(0.3)
         time.sleep(1)
-        # Language-independent scraping using edit/forms links as anchors
         script = r'''
         var main = document.querySelector('main');
         if (!main) return [];
         var exps = [];
         var midDot = '\u00B7';
 
-        // Each experience entry has an <a> link to /details/experience/edit/forms/{id}/
+        function parseExpLines(lines) {
+            if (lines.length === 0) return null;
+            var title = lines[0] || '';
+            var companyName = '';
+            var period = '';
+            var location = '';
+            for (var j = 1; j < lines.length; j++) {
+                var line = lines[j];
+                if (!companyName && line.indexOf(midDot) >= 0 && !/\d{4}/.test(line.split(midDot)[0])) {
+                    companyName = line.split(midDot)[0].trim();
+                } else if (!period && /\d{4}/.test(line) && (line.indexOf('\u2013') >= 0 || line.indexOf('-') >= 0 || line.indexOf(midDot) >= 0)) {
+                    period = line;
+                } else if (period && !location && line.length < 80) {
+                    location = line;
+                }
+            }
+            return {title: title, companyName: companyName, timePeriod: period, location: location};
+        }
+
+        function findCompanyFromLogo(startEl) {
+            var el = startEl;
+            for (var d = 0; d < 12; d++) {
+                el = el.parentElement;
+                if (!el || el === main) break;
+                if (el.tagName.toLowerCase() === 'ul') {
+                    var groupDiv = el.parentElement;
+                    if (groupDiv) {
+                        var img = groupDiv.querySelector('img[alt]');
+                        if (img) {
+                            var alt = img.getAttribute('alt') || '';
+                            return alt.replace(/^(Logo|Logotipo|Logotype)\s+(von|of|de|di|du|van)\s+/i, '')
+                                      .replace(/\s+(logo|Logo)$/i, '').trim();
+                        }
+                    }
+                    break;
+                }
+            }
+            return '';
+        }
+
+        // Strategy 1: Edit links (own profile only)
         var editLinks = main.querySelectorAll('a[href*="/details/experience/edit/forms/"]');
         var seen = {};
 
@@ -596,58 +695,65 @@ class LinkedinClient:
             if (!formId || seen[formId[1]]) continue;
             seen[formId[1]] = true;
 
-            // Link text contains everything: "Title\nCompany · Type\nPeriod\nLocation"
             var linkText = link.innerText.trim();
             var lines = linkText.split('\n').filter(function(l) { return l.trim().length > 0; }).map(function(l) { return l.trim(); });
-            if (lines.length === 0) continue;
+            var exp = parseExpLines(lines);
+            if (!exp) continue;
+            if (!exp.companyName) exp.companyName = findCompanyFromLogo(link);
+            exps.push(exp);
+        }
 
-            var title = lines[0] || '';
-            var companyName = '';
-            var period = '';
-            var location = '';
+        // Strategy 2: Third-party profile — parse innerText (language-independent)
+        if (exps.length === 0) {
+            var text = main.innerText || '';
+            var allLines = text.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l.length > 0; });
+            var yearRe = /\b(19|20)\d{2}\b/;
 
-            // Parse remaining lines by pattern (language-independent)
-            for (var j = 1; j < lines.length; j++) {
-                var line = lines[j];
-                if (!companyName && line.indexOf(midDot) >= 0 && !/\d{4}/.test(line.split(midDot)[0])) {
-                    // "Company · Employment type" line
-                    companyName = line.split(midDot)[0].trim();
-                } else if (!period && /\d{4}/.test(line) && (line.indexOf('\u2013') >= 0 || line.indexOf('-') >= 0 || line.indexOf(midDot) >= 0)) {
-                    // Period line (contains year + dash/en-dash/middot for duration)
-                    period = line;
-                } else if (period && !location && line.length < 80) {
-                    // Location follows period
-                    location = line;
+            for (var idx = 2; idx < allLines.length; idx++) {
+                var ln = allLines[idx];
+                // Stop at connection degree indicators (universal footer marker: "·N.")
+                if (/^[\u00B7·]\s*\d/.test(ln)) break;
+
+                // Detect period line (language-independent):
+                // Must have: 4-digit year + midDot (duration separator) + en-dash (date range)
+                // LinkedIn universally uses en-dash \u2013 and midDot \u00B7 regardless of UI language
+                var isPeriod = yearRe.test(ln) && ln.indexOf(midDot) >= 0 &&
+                    (ln.indexOf('\u2013') >= 0 || ln.indexOf('\u2014') >= 0);
+                if (!isPeriod) continue;
+
+                // Company is the line before period (usually has midDot for employment type)
+                var compLine = allLines[idx - 1] || '';
+                var comp = '';
+                if (compLine.indexOf(midDot) >= 0 && !yearRe.test(compLine.split(midDot)[0])) {
+                    comp = compLine.split(midDot)[0].trim();
+                } else {
+                    comp = compLine;
                 }
-            }
 
-            // For grouped roles (under a company), walk up past li > ul to the
-            // group container which has the company logo img
-            if (!companyName) {
-                var el = link;
-                for (var d = 0; d < 12; d++) {
-                    el = el.parentElement;
-                    if (!el || el === main) break;
-                    // Only check for img once we've passed through a ul (grouped structure)
-                    var tag = el.tagName.toLowerCase();
-                    if (tag === 'ul') {
-                        // The parent of this ul is the group container with the company img
-                        var groupDiv = el.parentElement;
-                        if (groupDiv) {
-                            var img = groupDiv.querySelector('img[alt]');
-                            if (img) {
-                                var alt = img.getAttribute('alt') || '';
-                                companyName = alt.replace(/^(Logo|Logotipo|Logotype)\s+(von|of|de|di|du|van)\s+/i, '')
-                                                 .replace(/\s+(logo|Logo)$/i, '').trim();
-                            }
-                        }
-                        break;
+                // Title is 2 lines before period (1 before company)
+                var ttl = (idx >= 2) ? allLines[idx - 2] : '';
+
+                // Skip if title looks like a skills summary (universal: ends with "+N word")
+                if (!ttl || ttl.length === 0 || ttl.length > 100) continue;
+                if (/\+\d+\s+\S+$/.test(ttl)) continue;
+
+                // Location is the line after period (short, no year)
+                var loc = '';
+                if (idx + 1 < allLines.length) {
+                    var nxt = allLines[idx + 1];
+                    if (nxt.length < 80 && !yearRe.test(nxt)) {
+                        loc = nxt;
                     }
                 }
-            }
 
-            exps.push({title: title, companyName: companyName, timePeriod: period, location: location});
+                var key = ttl + '|' + comp;
+                if (!seen[key]) {
+                    seen[key] = true;
+                    exps.push({title: ttl, companyName: comp, timePeriod: ln, location: loc});
+                }
+            }
         }
+
         return exps;
         '''
         return self.driver.execute_script(script) or []
