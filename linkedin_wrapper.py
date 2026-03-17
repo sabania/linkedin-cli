@@ -251,6 +251,17 @@ class LinkedinClient:
             return []
         self._navigate(f"https://www.linkedin.com/in/{identifier}/details/skills/")
         _human_delay(4.0)
+
+        # Check if page loaded successfully (LinkedIn blocks details pages for non-connected profiles)
+        error_check = self.driver.execute_script(r'''
+        var main = document.querySelector('main');
+        if (!main) return true;
+        var text = main.innerText || '';
+        return text.indexOf('Fehler') >= 0 || text.indexOf('error') >= 0 || text.indexOf('went wrong') >= 0;
+        ''')
+        if error_check:
+            return []
+
         for i in range(5):
             self.driver.execute_script(f"window.scrollTo(0, {(i + 1) * 500})")
             _human_delay(0.3, 0.4)
@@ -724,6 +735,17 @@ class LinkedinClient:
         profile_id = public_id or urn_id
         self._navigate(f"https://www.linkedin.com/in/{profile_id}/details/experience/")
         _human_delay(4.0)
+
+        # Check if page loaded successfully (LinkedIn blocks details pages for non-connected profiles)
+        error_check = self.driver.execute_script(r'''
+        var main = document.querySelector('main');
+        if (!main) return true;
+        var text = main.innerText || '';
+        return text.indexOf('Fehler') >= 0 || text.indexOf('error') >= 0 || text.indexOf('went wrong') >= 0;
+        ''')
+        if error_check:
+            return []
+
         for i in range(8):
             self.driver.execute_script(f"window.scrollTo(0, {(i + 1) * 600})")
             _human_delay(0.3, 0.4)
