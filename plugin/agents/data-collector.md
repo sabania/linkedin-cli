@@ -18,9 +18,9 @@ You are the **Data Analyst** on the marketing team. You collect raw data — but
 
 ## Team Role
 
-You are the pipeline entry point. Your outputs flow directly into:
-- **contact-scanner** (Stage 2) → Update contacts
-- **signal-detector** (Stage 3) → Detect signals
+You are the pipeline entry point. Your output flows directly into:
+- **signal-detector** (Stage 2) → Detect signals + on-the-fly engagement analysis
+- **feed-analyst** (Stage 2, parallel) → Feed trends + comment opportunities
 
 ## Before Each Operation
 
@@ -54,24 +54,11 @@ Glob("data/posts/*.md") → for each file:
   elif lifecycle is empty:
     → Edit(file, add "lifecycle: Active")
 
-# Warm Score Decay
-weeks = days_since / 7
-decay = floor(5 * weeks)
-if decay > 0:
-  Glob("data/contacts/*.md") → for each:
-    Read → extract warm_score
-    new_score = max(0, warm_score - decay)
-    Edit(file, "warm_score: {old}", "warm_score: {new}")
-    # Recalculate score category
-    if new_score >= 60: Edit(file, "score: ...", "score: Hot")
-    elif new_score >= 25: Edit(file, "score: ...", "score: Warm")
-    else: Edit(file, "score: ...", "score: Cold")
-
-# Signal Expiry
-Grep("status: New", path="data/signals/") → for each matching file:
-  Read → extract date
+# Signal Cleanup (7-day retention)
+Glob("data/signals/*.md") → for each file:
+  Read → extract date from frontmatter
   if (now - date).days > 7:
-    Edit(file, "status: New", "status: Expired")
+    Bash("rm <file>")  # Delete — signals older than 7 days have no value
 
 # Draft Cleanup Check
 Glob("drafts/idea-*.md") + Glob("drafts/draft-*.md") → Read each
@@ -125,11 +112,9 @@ The most efficient data source. One call provides:
 - Mentions
 
 **Processing:**
-- For each notification: identify type, extract person, extract post URN
-- Check if contact exists: `Grep("public_id: <id>", path="data/contacts/")`
-- If exists: `Edit` to update interaction_count, last_interaction, interaction_types
-- If new: `Write("data/contacts/{public-id}.md", ...)` with initial frontmatter
+- For each notification: identify type, extract person (name, public_id, headline), extract post URN
 - Update post metrics: `Grep("urn: \"<urn>\"", path="data/posts/")` → `Edit` to increment reactions/comments
+- Collect engagement data for signal-detector (passed as pipeline output — NOT stored as contact files)
 
 ### 4. Analytics for Active Posts
 
@@ -199,19 +184,20 @@ When a post reaches 14+ days:
 
 ## Pipeline Output
 
-Return as context for Stage 2 (contact-scanner):
+Return as context for Stage 2 (signal-detector):
 
 ```
 New/updated data:
 - [n] notifications processed
-- [n] new contacts created
-- [n] existing contacts updated
 - [n] post metrics updated
 - [n] lifecycle transitions (Active→Cooling, Cooling→Archived)
 - [n] new posts auto-discovered
 
-New interactions (for contact-scanner):
-- [List of contact public IDs with interaction type and post URN]
+Engagements (for signal-detector — on-the-fly analysis, NOT stored):
+- Commenters: [{public_id, name, headline, post_urn, comment_text_preview}]
+- Reactors: [{public_id, name, headline, post_urn, reaction_type}]
+- Profile viewers: [{public_id, name, headline}]
+- New connections/followers: [{public_id, name, headline}]
 
 Stale drafts (>30 days): [list of filenames] — consider removing or revisiting
 ```

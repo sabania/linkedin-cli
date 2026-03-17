@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Deep onboarding for LinkedIn Commander. Interview + historical post analysis + contact seed + competitor deep dives + system generation. The system starts "warmed up", not empty.
+description: Deep onboarding for LinkedIn Commander. Interview + historical post analysis + competitor deep dives + system generation. The system starts "warmed up", not empty.
 user-invocable: true
 allowed-tools:
   - Bash
@@ -208,60 +208,18 @@ All historical posts get lifecycle based on published date:
 
 ---
 
-## Phase 3: Contact Seed
-
-**Goal:** Capture top engagers from historical posts, evaluate ICP match, identify initial hot contacts.
-
-### 3.1 Load Engagers
-
-For the top 10 posts (by engagement rate):
-```bash
-linkedin-cli posts engagers <urn> --limit 50 --json
-```
-
-### 3.2 Deduplicate and Enrich
-
-- Merge engagers across all posts
-- Calculate interaction count (how often the same person appears)
-- Collect interaction types (reaction, comment)
-
-### 3.3 Evaluate ICP Match
-
-For each engager:
-- Match headline/title against ICP dimensions
-- Match industry
-- Estimate seniority
-- Score: High, Medium, Low, None
-
-### 3.4 Calculate Warm Score
-
-Initial Warm Score based on historical interactions:
-```
-+10  per reaction on own post
-+25  per comment on own post
-+20  for ICP Match (High)
-+10  for ICP Match (Medium)
-```
-
-### 3.5 Identify Hot Contacts
-
-Contacts with Warm Score >= 60 → Score: Hot
-→ These are the most valuable existing relationships.
-
----
-
-## Phase 4: Competitor Deep Dives
+## Phase 3: Competitor Deep Dives
 
 **Only if competitors were defined in Phase 1.**
 
-### 4.1 Per Competitor
+### 3.1 Per Competitor
 
 ```bash
 linkedin-cli profile show <competitor-id> --json
 linkedin-cli profile posts <competitor-id> --limit 20 --json
 ```
 
-### 4.2 Aggregation
+### 3.2 Aggregation
 
 Per competitor, calculate:
 - Avg Reactions, Avg Comments, Avg Engagement Rate
@@ -269,27 +227,27 @@ Per competitor, calculate:
 - Top Format, Top Hook Type
 - Content Pillars (topic mix)
 
-### 4.3 Content Gap Analysis
+### 3.3 Content Gap Analysis
 
 Compare own pillars vs. competitor pillars:
 - Topics competitors cover that we don't → Content Gap
 - Topics we cover that competitors don't → Differentiation
 
-### 4.4 Shared Engager Identification
+### 3.4 Shared Engager Identification
 
 ```bash
 linkedin-cli posts engagers <competitor-post-urn> --limit 50 --json
 ```
 
-Cross-reference with our contacts:
+Cross-reference with our top post engagers:
 - People who engage with both us AND the competitor → Shared Engagers
 - Shows overlapping audience
 
 ---
 
-## Phase 5: Generation
+## Phase 4: Generation
 
-### 5.1 config.json
+### 4.1 config.json
 
 ```json
 {
@@ -332,8 +290,6 @@ Cross-reference with our contacts:
 
   "signals": {
     "keywords": ["AI", "NLP", "Language Tech"],
-    "warm_score_threshold": 60,
-    "dormant_days": 90,
     "keyword_check_frequency": "daily",
     "max_signals_per_day": 10
   },
@@ -365,16 +321,16 @@ Cross-reference with our contacts:
 }
 ```
 
-### 5.2 Create Directory Structure
+### 4.2 Create Directory Structure
 
 ```bash
-mkdir -p data/{posts/archive,contacts,patterns,strategy,reports,competitors,signals,feed-insights,icp,comments}
+mkdir -p data/{posts/archive,patterns,strategy,reports,competitors,signals,feed-insights,icp}
 mkdir -p drafts
 ```
 
-### 5.3 Write Data Files (FILLED, not empty!)
+### 4.3 Write Data Files (FILLED, not empty!)
 
-Fill with data from Phase 2-4, writing one Markdown file per record:
+Fill with data from Phase 2-3, writing one Markdown file per record:
 
 **Posts** (Active/Cooling → `data/posts/`, Archived → `data/posts/archive/`):
 ```
@@ -383,12 +339,6 @@ For each historical post:
     Write("data/posts/{date}-{slug}.md", frontmatter + body)
   else:
     Write("data/posts/archive/{date}-{slug}.md", mini-summary frontmatter)
-```
-
-**Contacts** (file per engager):
-```
-For each engager:
-  Write("data/contacts/{public-id}.md", frontmatter with Warm Score + ICP Match)
 ```
 
 **Patterns** (file per detected pattern):
@@ -414,7 +364,7 @@ For each ICP dimension:
 Write("data/strategy/v1.0.md", frontmatter + full strategy text)
 ```
 
-### 5.4 Create Strategy v1.0
+### 4.4 Create Strategy v1.0
 
 Based on interview + historical analysis:
 
@@ -447,7 +397,7 @@ changes: "Initial strategy based on setup analysis"
 <What historically performed poorly>
 ```
 
-### 5.5 Generate CLAUDE.md
+### 4.5 Generate CLAUDE.md
 
 Create a CLAUDE.md in CWD. The **navigation map** for Claude Code and all agents.
 
@@ -468,7 +418,6 @@ Run `/setup` if config.json does not exist.
 | Data Directory | data/ |
 | Post Drafts | drafts/ |
 | Active Strategy | data/strategy/ (status: Active) |
-| Hot Contacts | data/contacts/ (score: Hot) |
 | Pending Signals | data/signals/ (status: New) |
 | Dashboard | plugin/dashboard.html |
 
@@ -484,7 +433,6 @@ Run `/setup` if config.json does not exist.
 | /evolve | Evolve strategy |
 | /report | Weekly report |
 | /competitor [name] | Analyze competitor |
-| /contacts [arg] | Manage contacts & leads |
 | /outreach <name> | Personalized message |
 
 ## Content Pillars
@@ -512,7 +460,6 @@ CREATE → PUBLISH → MEASURE → ANALYZE → LEARN → ADAPT → CREATE
 - Strategy Version: v1.0 (Initial)
 - Active Patterns: [count from Phase 2]
 - Posts Tracked: [count from seeding]
-- Hot Contacts: [count from Phase 3]
 - Active Experiments: none
 - Last Report: none
 - Baseline: [median reactions] Rx, [median comments] Cm, [median ER]% ER
@@ -536,11 +483,6 @@ Historical Analysis:
   [n] patterns detected (Low-Medium Confidence)
   Best hook: [Top Hook Type]
   Best day: [Best Day]
-
-Contacts:
-  [n] engagers captured
-  [n] hot contacts (Warm Score >= 60)
-  [n] ICP matches (High)
 
 Competitors:
   [n] analyzed

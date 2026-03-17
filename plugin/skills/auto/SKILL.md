@@ -1,6 +1,6 @@
 ---
 name: auto
-description: "Morning Check / Session Entry Point. Delta pipeline: Stage 1 COLLECT → Stage 2 ENRICH → Stage 3 DETECT (+ Feed parallel). Merges previous /daily + /auto."
+description: "Morning Check / Session Entry Point. Delta pipeline: Stage 1 COLLECT → Stage 2 DETECT (+ Feed parallel). On-the-fly engagement analysis, no stored contacts."
 user-invocable: true
 allowed-tools:
   - Bash
@@ -14,34 +14,32 @@ allowed-tools:
 
 # /auto — Morning Check (Session Entry Point)
 
-The central entry point for every automated session. Runs the 3-stage pipeline and gives the user a prioritized summary.
+The central entry point for every automated session. Runs the 2-stage pipeline and gives the user a prioritized summary.
 
 **Replaces the previous `/daily` and `/auto`.** Called by cron job (daily ~08:00) or manually.
 
 **IMPORTANT: Delegate the work to the specialized agents. Do NOTHING yourself — you are only the orchestrator.**
 
-Use the `Agent` tool to start the following agents **sequentially** (Stage 1→2→3) or **in parallel** (3a+3b):
+Use the `Agent` tool to start the following agents **sequentially** (Stage 1→2) or **in parallel** (2a+2b):
 - **Stage 1:** Start `data-collector` agent
-- **Stage 2:** Start `contact-scanner` agent (with Stage 1 output)
-- **Stage 3a:** Start `signal-detector` agent (with Stage 2 output)
-- **Stage 3b:** Start `feed-analyst` agent (parallel to 3a)
+- **Stage 2a:** Start `signal-detector` agent (with Stage 1 output)
+- **Stage 2b:** Start `feed-analyst` agent (parallel to 2a)
 
 ## Usage
 
 ```
-/auto              # Full Morning Check (3-stage pipeline)
+/auto              # Full Morning Check (2-stage pipeline)
 /auto quick        # Stage 1 only (collect data, no feed)
 ```
 
-## 3-Stage Pipeline
+## 2-Stage Pipeline
 
 ```
-Stage 1: COLLECT          Stage 2: ENRICH         Stage 3: DETECT
-data-collector  ────────► contact-scanner  ──────► signal-detector
-(Data Analyst)            (Community Manager)      (Intelligence Officer)
-                                           parallel:
-                                                    feed-analyst
-                                                    (Social Media Scout)
+Stage 1: COLLECT              Stage 2: DETECT
+data-collector  ────────────► signal-detector
+(Data Analyst)         parallel:
+                               feed-analyst
+                               (Social Media Scout)
 ```
 
 ### Stage 1: COLLECT (data-collector agent)
@@ -50,39 +48,26 @@ data-collector  ────────► contact-scanner  ──────�
 1. Local calculations (NO API call):
    - Post lifecycle transitions (Active → Cooling → Archived)
    - Archive posts at day 14 (full → mini-summary in data/posts/archive/)
-   - Warm Score decay (-5 per week since last session)
-   - Signal expiry (New > 7 days → Expired)
+   - Signal cleanup (> 7 days → delete)
+   - Draft cleanup check (> 30 days → suggestion)
 2. Auto-discover new published posts via CLI
 3. Fetch notifications (1 API call = 80% of deltas)
 4. Analytics for active posts (only lifecycle: Active/Cooling)
 5. Snapshot checks (Day 3/7/14)
 
-**Output → Stage 2:** New/updated contacts with interaction type and post URN.
+**Output → Stage 2:** Engagement data (commenters, reactors, profile viewers, new connections — with name, headline, post URN).
 
-### Stage 2: ENRICH (contact-scanner agent)
+### Stage 2: DETECT (parallel)
 
-**Input:** Output from Stage 1 (no own API calls).
-
-**What happens:**
-1. Update contacts (create new or update existing in data/contacts/)
-2. Recalculate Warm Scores
-3. ICP matching for new contacts
-4. Dormant detection + reactivation
-5. Identify follow-ups
-
-**Output → Stage 3:** Enriched contacts (score changes, new hot contacts, reactivations).
-
-### Stage 3: DETECT (parallel)
-
-**3a: signal-detector agent**
-- Input: Enriched contacts from Stage 2
-- Detect signals from pipeline input (no API needed for most)
-- Optional: Keyword search (1 API call per keyword)
+**2a: signal-detector agent**
+- Input: Engagement data from Stage 1
+- On-the-fly ICP matching (headline vs. config.icp — no stored contacts)
+- Generate signals: outreach_candidate, comment_reply, new_connection_icp, profile_view, keyword_mention
 - Write signal files to data/signals/
 - Output: Prioritized signal list
 
-**3b: feed-analyst agent (parallel)**
-- Independent from Stage 1-2 (own feed call)
+**2b: feed-analyst agent (parallel)**
+- Independent from Stage 1 (own feed call)
 - Fetch feed (1 API call)
 - Write insight files to data/feed-insights/
 - Detect trends, find comment opportunities
@@ -99,14 +84,9 @@ DATA:
   [n] lifecycle transitions (Active→Cooling: 1, Archived: 0)
   [n] new posts auto-discovered
 
-CONTACTS:
-  [n] new contacts | [n] updated
-  [n] new hot contacts: [names]
-  [n] follow-ups due
-
 SIGNALS ([n] new):
-  HIGH: engagement_hot — Anna Schmidt (Score: 72)
-  HIGH: job_change — Max Mueller (→ VP Engineering @ NewCo)
+  HIGH: comment_reply — Sarah K commented on "AI in Practice"
+  HIGH: outreach_candidate — Anna Schmidt (CTO @ TechAG, ICP: High)
   MEDIUM: keyword_mention — "AI Agents" in post by @tech-leader
 
 FEED:
@@ -116,7 +96,7 @@ FEED:
     2. [MEDIUM] @tech-leader: "Why we switched..." (45 Rx in 5h)
 
 NEEDS YOUR DECISION:
-  - 2 follow-ups due → /contacts follow-up
+  - 2 comment replies pending → reply on LinkedIn
   - Last post 5 days ago → /draft for new post?
   - New patterns detected → /evolve for strategy update?
   - 2 comment opportunities → Write draft?
@@ -139,9 +119,9 @@ After the pipeline — hints only, no actions:
 
 - **Update session** — after completion set `session.last_session_date`
 - **Delta-based** — only data since last session
-- **Pipeline order** — Stage 1 → 2 → 3 (Feed parallel to 3)
+- **Pipeline order** — Stage 1 → 2 (Feed parallel to 2)
 - **Collect data: yes. External actions: only with confirmation.**
 - **Never post, send, or comment autonomously**
 - **Short and actionable** — no long explanations
-- **Agents in parallel** where possible (Stage 3a + 3b)
-- **Priority** — signals and follow-ups before content
+- **Agents in parallel** where possible (Stage 2a + 2b)
+- **Priority** — signals before content

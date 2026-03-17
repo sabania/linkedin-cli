@@ -1,6 +1,6 @@
 # LinkedIn Commander v3 — Plugin Architecture
 
-Self-learning LinkedIn management system. 9 AI agents work as a cohesive marketing team in a delta-based pipeline. The system analyzes, learns, and adapts — but the human decides.
+Self-learning LinkedIn management system. 8 AI agents work as a cohesive marketing team in a delta-based pipeline. The system analyzes, learns, and adapts — but the human decides.
 
 ## Architecture
 
@@ -17,11 +17,10 @@ graph TB
         ADHOC["Ad-hoc Commands<br/>/ideas /draft /analyze ..."]
     end
 
-    subgraph "3-Stage Pipeline (Daily)"
+    subgraph "2-Stage Pipeline (Daily)"
         S1["Stage 1: COLLECT<br/>data-collector<br/>(Data Analyst)"]
-        S2["Stage 2: ENRICH<br/>contact-scanner<br/>(Community Manager)"]
-        S3A["Stage 3a: DETECT<br/>signal-detector<br/>(Intelligence Officer)"]
-        S3B["Stage 3b: DETECT<br/>feed-analyst<br/>(Social Media Scout)"]
+        S2A["Stage 2a: DETECT<br/>signal-detector<br/>(Intelligence Officer)"]
+        S2B["Stage 2b: DETECT<br/>feed-analyst<br/>(Social Media Scout)"]
     end
 
     subgraph "Weekly"
@@ -37,8 +36,8 @@ graph TB
 
     CRON_M --> AUTO
     CRON_W --> REPORT
-    AUTO --> S1 --> S2 --> S3A
-    S2 --> S3B
+    AUTO --> S1 --> S2A
+    S1 --> S2B
     REPORT --> PA --> RB --> SE
     REPORT -.->|">2 weeks"| CA
     ADHOC --> CW
@@ -50,9 +49,8 @@ graph TB
     end
 
     S1 --> DS
-    S2 --> DS
-    S3A --> DS
-    S3B --> DS
+    S2A --> DS
+    S2B --> DS
     PA --> DS
     RB --> DS
     SE --> DS
@@ -66,13 +64,13 @@ graph TB
 graph TD
     START["Session Start<br/>(Cron or ad-hoc)"] --> LOAD["Load config.json<br/>Check last_session_date"]
     LOAD --> LOCAL["Local Calculations<br/>(NO API call)"]
-    LOCAL --> |"Lifecycle transitions<br/>Warm Score decay<br/>Signal expiry<br/>Draft cleanup check"| DELTA["Fetch Delta Data<br/>(only NEW data)"]
-    DELTA --> |"Notifications 1 call<br/>Active Post Analytics + Comments<br/>Auto-Discovery + Draft Linking<br/>Feed 1 call"| PROCESS["Process<br/>(Collect → Enrich → Detect)"]
+    LOCAL --> |"Lifecycle transitions<br/>Signal cleanup (7d)<br/>Draft cleanup check"| DELTA["Fetch Delta Data<br/>(only NEW data)"]
+    DELTA --> |"Notifications 1 call<br/>Active Post Analytics + Comments<br/>Auto-Discovery + Draft Linking<br/>Feed 1 call"| PROCESS["Process<br/>(Collect → Detect)"]
     PROCESS --> SUMMARY["Summary<br/>to Human"]
     SUMMARY --> UPDATE["last_session_date<br/>= now"]
 ```
 
-## Daily Pipeline (3 Stages)
+## Daily Pipeline (2 Stages)
 
 ```mermaid
 graph LR
@@ -86,25 +84,17 @@ graph LR
         DC --> AD
     end
 
-    subgraph "Stage 2: ENRICH"
-        CS["contact-scanner<br/>(sonnet)"]
-        WS["Warm Scores"]
-        ICP["ICP Match"]
-        CS --> WS
-        CS --> ICP
-    end
-
-    subgraph "Stage 3: DETECT"
+    subgraph "Stage 2: DETECT (parallel)"
         SD["signal-detector<br/>(sonnet)"]
         FA["feed-analyst<br/>(sonnet)"]
-        SIG["Signals"]
+        SIG["Signals +<br/>ICP Matching"]
         OPP["Comment<br/>Opportunities"]
         SD --> SIG
         FA --> OPP
     end
 
-    DC -->|"Contacts +<br/>Interactions"| CS
-    CS -->|"Scored<br/>Contacts"| SD
+    DC -->|"Notifications +<br/>Interactions"| SD
+    DC -->|"Feed Data"| FA
 ```
 
 ## Post Lifecycle
@@ -142,7 +132,6 @@ stateDiagram-v2
 graph TD
     subgraph "Agent does AUTONOMOUSLY"
         D["Collect data"]
-        SC["Score contacts"]
         SI["Detect signals"]
         P["Detect patterns"]
         I["Generate ideas"]
@@ -192,21 +181,20 @@ graph LR
 | Agent | Team Role | Model | When | API Calls |
 |-------|-----------|-------|------|-----------|
 | data-collector | Data Analyst | haiku | Daily (Stage 1) | Notifications, Analytics |
-| contact-scanner | Community Manager | sonnet | Daily (Stage 2) | None (pipeline input) |
-| signal-detector | Intelligence Officer | sonnet | Daily (Stage 3a) | Keyword search |
-| feed-analyst | Social Media Scout | sonnet | Daily (Stage 3b) | Feed list |
+| signal-detector | Intelligence Officer | sonnet | Daily (Stage 2a) | Keyword search |
+| feed-analyst | Social Media Scout | sonnet | Daily (Stage 2b) | Feed list |
 | post-analyzer | Performance Analyst | sonnet | Weekly + on-demand | None (stored data) |
 | report-builder | Reporting Analyst | sonnet | Weekly + on-demand | Profile network |
 | strategy-evolver | Head of Strategy | opus | Weekly + on-demand | None (synthesizes) |
 | content-writer | Content Creator | sonnet | On-demand | Profile show/posts |
 | competitor-analyst | Market Researcher | sonnet | On-demand / >2 weeks | Profile show/posts/engagers |
 
-## Skills (12 Commands)
+## Skills (11 Commands)
 
 | Command | Purpose | Agents |
 |---------|---------|--------|
-| `/setup` | Deep onboarding (5 phases) | All |
-| `/auto` | Morning Check (3-stage pipeline) | data-collector, contact-scanner, signal-detector, feed-analyst |
+| `/setup` | Deep onboarding (4 phases) | All |
+| `/auto` | Morning Check (2-stage pipeline) | data-collector, signal-detector, feed-analyst |
 | `/check` | Quick status (local, no API) | None |
 | `/ideas [n]` | Generate content ideas | content-writer |
 | `/draft <topic>` | Write post or comment | content-writer |
@@ -214,7 +202,6 @@ graph LR
 | `/evolve` | Evolve strategy | strategy-evolver |
 | `/report` | Weekly report | report-builder |
 | `/competitor <name>` | Analyze competitor | competitor-analyst |
-| `/contacts [arg]` | Contacts & network health | contact-scanner |
 | `/outreach <name>` | Personalized message | content-writer |
 | `data-schema` | Schema reference (not user-invocable) | — |
 
@@ -222,15 +209,12 @@ graph LR
 
 ```mermaid
 erDiagram
-    Posts ||--o{ Contacts : "Engagers"
     Posts ||--o{ Patterns : "generates"
     Posts ||--o{ Signals : "triggers"
-    Contacts ||--o{ Signals : "affects"
     Patterns ||--o{ Strategy : "informs"
     Strategy ||--o{ Posts : "guides"
     Competitors ||--o{ Patterns : "Learnings"
     FeedInsights ||--o{ Signals : "Opportunities"
-    FeedInsights ||--o{ Comments : "Comment on"
     ICPProfile ||--o{ Strategy : "sharpens"
     Reports ||--o{ Strategy : "Trends"
 
@@ -241,14 +225,6 @@ erDiagram
         number reactions
         number engagement_rate
         string urn
-    }
-
-    Contacts {
-        string name
-        number warm_score
-        select icp_match
-        select score
-        date follow_up_date
     }
 
     Patterns {
@@ -283,13 +259,6 @@ erDiagram
         boolean comment_opportunity
     }
 
-    Comments {
-        string target_post_urn
-        string target_author
-        date comment_date
-        select visibility_gained
-    }
-
     ICPProfile {
         select dimension
         string value
@@ -320,9 +289,8 @@ The system **never** reprocesses everything from scratch. Instead:
 2. On each start: only fetch data since last session
 3. Notifications = most efficient source (1 API call = 80% of deltas)
 4. Post lifecycle limits API calls: Archived posts are never touched again
-5. Warm Score decay is calculated locally (no API needed)
-6. Auto-discovery links new published posts to existing drafts
-7. Snapshot metrics are recorded in post body at Day 3, 7, 14
+5. Auto-discovery links new published posts to existing drafts
+6. Snapshot metrics are recorded in post body at Day 3, 7, 14
 
 ## Setup = Warm Start
 
@@ -331,16 +299,15 @@ The system **never** reprocesses everything from scratch. Instead:
 ```mermaid
 graph TD
     P1["Phase 1: Interview<br/>Goals, ICP, Pillars, Tone"] --> P2["Phase 2: Historical Analysis<br/>20-30 Posts + Analytics + Patterns"]
-    P2 --> P3["Phase 3: Contact Seed<br/>Top Engagers + ICP Match + Warm Score"]
-    P3 --> P4["Phase 4: Competitor Deep-Dives<br/>Profile + Posts + Content Gaps"]
-    P4 --> P5["Phase 5: Generation<br/>config.json + FILLED Data Store<br/>+ Strategy v1.0 + CLAUDE.md"]
+    P2 --> P3["Phase 3: Competitor Deep-Dives<br/>Profile + Posts + Content Gaps"]
+    P3 --> P4["Phase 4: Generation<br/>config.json + FILLED Data Store<br/>+ Strategy v1.0 + CLAUDE.md"]
 ```
 
 ## Dashboard
 
 `plugin/dashboard.html` — Interactive HTML dashboard. No server needed, just open in browser. Ships with the plugin.
 
-**Tabs:** Overview, Posts, Contacts, Signals, Feed, Patterns, Competitors, Strategy
+**Tabs:** Overview, Posts, Signals, Feed, Patterns, Competitors, Strategy
 
 - Agents write Markdown files to `data/`
 - Agents know nothing about the dashboard
@@ -354,15 +321,13 @@ linkedin-cli/
 ├── data/                    # All tracking data (Markdown file-per-record)
 │   ├── posts/               # Active + Cooling posts (0-14 days)
 │   │   └── archive/         # Mini-summaries of archived posts
-│   ├── contacts/            # One .md per contact
 │   ├── patterns/            # Detected patterns
 │   ├── strategy/            # Versioned strategies
 │   ├── reports/             # Weekly reports
 │   ├── competitors/         # Competitor profiles
 │   ├── signals/             # Trigger events
 │   ├── feed-insights/       # Feed analysis (7-day retention)
-│   ├── icp/                 # ICP dimensions
-│   └── comments/            # Strategic comments
+│   └── icp/                 # ICP dimensions
 ├── drafts/                  # Post drafts (.md)
 ├── CLAUDE.md                # Navigation map (generated by /setup)
 └── plugin/
@@ -371,17 +336,16 @@ linkedin-cli/
     ├── dashboard.html        # Interactive dashboard
     ├── agents/
     │   ├── data-collector.md # Stage 1: COLLECT
-    │   ├── contact-scanner.md # Stage 2: ENRICH
-    │   ├── signal-detector.md # Stage 3a: DETECT
-    │   ├── feed-analyst.md   # Stage 3b: DETECT (parallel)
+    │   ├── signal-detector.md # Stage 2a: DETECT
+    │   ├── feed-analyst.md   # Stage 2b: DETECT (parallel)
     │   ├── post-analyzer.md  # Weekly: Performance
     │   ├── report-builder.md # Weekly: Reports
     │   ├── strategy-evolver.md # Weekly: Learning Loop
     │   ├── content-writer.md # On-demand: Content
     │   └── competitor-analyst.md # On-demand: Market Research
     └── skills/
-        ├── setup/            # Deep onboarding (5 phases)
-        ├── auto/             # Morning Check (3-stage pipeline)
+        ├── setup/            # Deep onboarding (4 phases)
+        ├── auto/             # Morning Check (2-stage pipeline)
         ├── check/            # Quick status (local)
         ├── ideas/            # Generate ideas
         ├── draft/            # Write post/comment
@@ -389,7 +353,6 @@ linkedin-cli/
         ├── evolve/           # Evolve strategy
         ├── report/           # Weekly report
         ├── competitor/       # Analyze competitors
-        ├── contacts/         # Contacts + network health
         ├── outreach/         # Outreach messages
         └── data-schema/      # Schema reference
 ```
@@ -399,7 +362,7 @@ linkedin-cli/
 1. **Delta-based** — Never rescan everything. Only new data since last session.
 2. **Notifications first** — 1 API call = 80% of deltas.
 3. **Post lifecycle** — Active (7d) → Cooling (14d) → Archived (never touched again).
-4. **Pipeline, not silos** — Agents work sequentially: Collect → Enrich → Detect.
+4. **Pipeline, not silos** — Agents work sequentially: Collect → Detect.
 5. **Human-in-the-loop** — Agent analyzes and proposes. Human decides and acts.
 6. **Learning loop** — strategy-evolver is the brain. Without it, the system doesn't learn.
 7. **Warm start** — Setup fills the data store. No cold start.

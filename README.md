@@ -45,7 +45,6 @@ claude --plugin-dir ./plugin
 That's it. The setup wizard guides you through everything:
 - Define your goals and target audience
 - Automatically analyze existing posts (baseline + initial patterns)
-- Capture top engagers as contacts
 - Analyze competitors
 - Create strategy v1.0
 
@@ -60,9 +59,8 @@ The system starts **warmed up** — not empty.
 You get:
 - Who interacted with your posts (names, not just numbers)
 - How your active posts are performing
-- New signals (job changes, hot contacts, keyword mentions)
+- New signals (outreach candidates, comment replies, keyword mentions)
 - Feed trends and comment opportunities
-- Due follow-ups
 - What you should do today
 
 ### Create Content
@@ -81,11 +79,9 @@ You get:
 /evolve                  # Evolve strategy based on learnings
 ```
 
-### Contacts & Competitors
+### Outreach & Competitors
 
 ```
-/contacts hot            # Your most valuable contacts
-/contacts follow-up      # Due follow-ups
 /outreach <name>         # Generate personalized message
 /competitor <name>       # Analyze competitor
 /check                   # Quick status (no API call, instant)
@@ -93,7 +89,7 @@ You get:
 
 ### Dashboard
 
-Open `plugin/dashboard.html` in your browser — interactive dashboard. Posts, Contacts, Signals, Patterns, Competitors — all at a glance.
+Open `plugin/dashboard.html` in your browser — interactive dashboard. Posts, Signals, Patterns, Competitors — all at a glance.
 
 ### How It Learns
 

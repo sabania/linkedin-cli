@@ -26,15 +26,13 @@ linkedin-cli/
 ├── data/
 │   ├── posts/                 # Published, actively tracked (0-14 days)
 │   │   └── archive/           # Mini-summary of old posts (14+ days)
-│   ├── contacts/
 │   ├── patterns/
 │   ├── strategy/
 │   ├── reports/
 │   ├── competitors/
 │   ├── signals/
 │   ├── feed-insights/
-│   ├── icp/
-│   └── comments/
+│   └── icp/
 └── plugin/
 ```
 
@@ -187,71 +185,6 @@ engagement_rate: 4.3
 
 ---
 
-### Contact (`data/contacts/{public-id}.md`)
-
-```yaml
----
-name: Anna Schmidt
-public_id: anna-schmidt
-linkedin_url: "https://linkedin.com/in/anna-schmidt"
-headline: "CTO @ TechAG"
-company: TechAG
-industry: Software
-location: Munich, Germany
-connection_degree: 1st
-source: Post Reaction
-source_detail: "urn:li:activity:7435982583777169408"
-interaction_types: "like, comment"
-score: Hot
-warm_score: 85
-icp_match: High
-status: Engaged
-first_seen: 2026-02-15
-last_interaction: 2026-03-12
-interaction_count: 5
-follow_up_date: 2026-03-15
-last_outreach: null
-outreach_type: null
-response_status: null
----
-Notes about this contact...
-```
-
-#### Allowed Values
-
-| Field | Values |
-|-------|--------|
-| connection_degree | 1st, 2nd, 3rd |
-| source | Post Reaction, Comment, Profile View, Invitation, Search, Competitor Engager, Feed, Manual |
-| interaction_types | like, comment, share, view, reply, praise, interest, empathy, entertainment |
-| score | Hot, Warm, Cold |
-| icp_match | High, Medium, Low, None |
-| status | New, Researched, Engaged, Contacted, Replied, Connected, Dormant |
-| outreach_type | Connection Request, Message, InMail, Comment Reply |
-| response_status | Pending, Accepted, Replied, No Response |
-
-#### Warm Score Calculation
-```
-+10  per reaction on own post
-+25  per comment on own post
-+15  for profile view
-+5   per message (sent or received)
-+20  for ICP Match (High)
-+10  for ICP Match (Medium)
--5   per week without interaction (decay)
-Cap: 100
-```
-
-#### Score Derivation from Warm Score
-- **Hot**: Warm Score >= 60
-- **Warm**: Warm Score 25-59
-- **Cold**: Warm Score < 25
-
-#### Dormant Detection
-Contact with Status "Connected" and Last Interaction > 90 days → Status becomes "Dormant"
-
----
-
 ### Pattern (`data/patterns/{type}-{slug}.md`)
 
 ```yaml
@@ -399,13 +332,13 @@ Inverse gap: We cover Open Source, they don't.
 ```yaml
 ---
 date: 2026-03-14
-type: engagement_hot
+type: outreach_candidate
 contact_name: Anna Schmidt
 contact_public_id: anna-schmidt
 headline: "CTO @ TechAG"
 priority: High
 action: outreach
-action_detail: "Reached Warm Score of 72 after 5 interactions"
+action_detail: "ICP Match High — commented on your post about AI Agents"
 status: New
 source: "urn:li:activity:7435982583777169408"
 ---
@@ -416,13 +349,12 @@ Additional context or notes.
 
 | Type | Priority | Trigger | Recommended Action |
 |------|----------|---------|-------------------|
-| engagement_hot | High | Warm Score exceeds threshold | outreach |
-| repeat_engagement | High | 3+ interactions in 30 days | follow_up |
-| job_change | High | Headline has changed | outreach |
-| new_follower_icp | High | New follower matches ICP | connect |
+| outreach_candidate | High | ICP Match High + interaction | outreach |
+| comment_reply | High | Someone commented on your post | reply |
+| engagement_cluster | High | Same person 2+ interactions in batch | outreach |
+| new_connection_icp | High | New connection/follower matches ICP | welcome_message |
 | profile_view | Medium | Someone viewed profile | research |
 | keyword_mention | Medium | Keyword in new post | comment |
-| dormant_reactivation | Medium | Silent contact engages again | follow_up |
 | comment_opportunity | Medium | High-momentum post in feed | comment |
 | competitor_post | Low | New post from competitor | monitor |
 | funding_signal | Medium | Company posting many jobs / growing | research |
@@ -430,8 +362,8 @@ Additional context or notes.
 #### Signal Lifecycle
 ```
 Detected → New → Acknowledged → Acted / Dismissed
-                                    ↓
-New → Expired (after 7 days without action)
+                    ↓
+        Deleted after 7 days (automatic cleanup)
 ```
 
 ---
@@ -502,24 +434,6 @@ last_updated: 2026-03-14
 
 ---
 
-### Comment Tracking (`data/comments/{date}-on-{target-author-slug}-{n}.md`)
-
-```yaml
----
-target_post_urn: "urn:li:activity:..."
-target_author: Sarah K.
-target_author_public_id: sarah-k
-comment_text: "Great point about AI agents..."
-comment_date: 2026-03-14
-target_post_reactions: 89
-visibility_gained: High
-new_connections_from: 2
----
-Notes about this comment's impact.
-```
-
----
-
 ## Post Retention (Sliding Window)
 
 | Where | What | Max Files |
@@ -586,27 +500,12 @@ Grep("urn: \"urn:li:activity:123\"", path="data/posts/") → matching file
 
 ### Create record
 ```
-Write("data/contacts/anna-schmidt.md", "---\nname: Anna Schmidt\n...\n---\nNotes...")
-```
-
-### Update field
-```
-Edit("data/contacts/anna-schmidt.md", "warm_score: 72", "warm_score: 85")
+Write("data/signals/{date}-outreach-anna-schmidt.md", "---\ndate: 2026-03-14\ntype: outreach_candidate\n...\n---")
 ```
 
 ### Delete record
 ```
 Bash("rm data/signals/2026-03-01-keyword-old-signal.md")
-```
-
-### Count records
-```
-Glob("data/contacts/*.md") → count files
-```
-
-### Find Hot Contacts
-```
-Grep("score: Hot", path="data/contacts/") → list of files
 ```
 
 ### Find Active Posts
@@ -629,10 +528,9 @@ Grep("status: Active", path="data/strategy/") → matching file
 Grep("urn: \"urn:li:activity:123\"", path="data/posts/") → if found, skip
 ```
 
-### Aggregate (e.g., count contacts per score)
+### Aggregate (e.g., count signals per priority)
 ```
-Grep("score: Hot", path="data/contacts/", output_mode="count") → count
-Grep("score: Warm", path="data/contacts/", output_mode="count") → count
-Grep("score: Cold", path="data/contacts/", output_mode="count") → count
+Grep("priority: High", path="data/signals/", output_mode="count") → count
+Grep("priority: Medium", path="data/signals/", output_mode="count") → count
 ```
 

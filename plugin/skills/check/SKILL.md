@@ -20,8 +20,6 @@ Shows the current state without API calls or updates. Only reads data files and 
    - Posts: `Glob("data/posts/*.md")` → count per lifecycle
    - Post archive: `Glob("data/posts/archive/*.md")` → count
    - Ideas/Drafts: `Glob("drafts/*.md")` → count per status
-   - Contacts: `Grep("score: Hot", path="data/contacts/")`, `Grep("score: Warm", ...)`, `Grep("score: Cold", ...)`
-   - Due follow-ups: `Grep("follow_up_date:", path="data/contacts/")` → check dates
    - New signals: `Grep("status: New", path="data/signals/")`
    - Active strategy: `Grep("status: Active", path="data/strategy/")`
    - Running experiments: `Grep("experiment:", path="data/posts/")`
@@ -49,10 +47,6 @@ CONTENT:
   Last post: 1 day ago
   Strategy: v1.2 (since Mar 03)
   Experiment: hook-type-v1 (7/10 posts)
-
-CONTACTS:
-  Total: 245 | Hot: 5 | Warm: 89 | Cold: 122 | Dormant: 29
-  Follow-ups due: 2
 
 SIGNALS:
   New: 3 (1 High, 2 Medium)

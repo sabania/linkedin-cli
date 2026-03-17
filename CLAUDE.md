@@ -1,10 +1,10 @@
 # LinkedIn Command Center v3
 
-Self-learning LinkedIn management system. 9 AI agents as a cohesive marketing team. Delta-based pipeline. The human decides — the agent analyzes and supports.
+Self-learning LinkedIn management system. 8 AI agents as a cohesive marketing team. Delta-based pipeline. The human decides — the agent analyzes and supports.
 
 ## Setup
 
-**First-time setup:** Run `/setup` — deep onboarding with 5 phases (interview + historical analysis + contact seed + competitor deep-dives + populated data store).
+**First-time setup:** Run `/setup` — deep onboarding with 4 phases (interview + historical analysis + competitor deep-dives + populated data store).
 
 Check if `config.json` exists. If not, run `/setup`.
 
@@ -35,7 +35,6 @@ config.json contains:
 |-----------|---------|
 | `data/posts/` | Active + Cooling posts (0-14 days) |
 | `data/posts/archive/` | Mini-summaries of archived posts (14+ days) |
-| `data/contacts/` | LinkedIn contacts with Warm Score + ICP Match |
 | `data/patterns/` | Detected success patterns with confidence |
 | `data/strategy/` | Versioned content strategy (Active/Archived) |
 | `data/reports/` | Weekly performance reports |
@@ -43,7 +42,6 @@ config.json contains:
 | `data/signals/` | Trigger events and opportunities |
 | `data/feed-insights/` | Feed analysis, trends, comment opportunities |
 | `data/icp/` | Ideal Customer Profile (sharpened over time) |
-| `data/comments/` | Strategic comments |
 
 ### Post Lifecycle (orthogonal to Status)
 
@@ -66,8 +64,8 @@ config.json contains:
 
 | Command | Purpose |
 |---------|---------|
-| `/setup` | Deep onboarding: 5-phase setup with historical analysis |
-| `/auto` | Morning Check: 3-stage delta pipeline (Collect → Enrich → Detect) |
+| `/setup` | Deep onboarding: 4-phase setup with historical analysis |
+| `/auto` | Morning Check: 2-stage delta pipeline (Collect → Detect) |
 | `/check` | Quick status: local data only, no API |
 | `/ideas [n]` | Generate content ideas (8 sources) |
 | `/draft <topic>` | Write post or comment |
@@ -75,7 +73,6 @@ config.json contains:
 | `/evolve` | Evolve strategy (human gate) |
 | `/report` | Create weekly report |
 | `/competitor <name>` | Analyze competitor (delta-based) |
-| `/contacts [arg]` | Manage contacts + network health |
 | `/outreach <name>` | Generate personalized message |
 
 ## Agents (Marketing Team)
@@ -83,9 +80,8 @@ config.json contains:
 | Agent | Role | Model | Pipeline |
 |-------|------|-------|----------|
 | data-collector | Data Analyst | haiku | Daily Stage 1: COLLECT |
-| contact-scanner | Community Manager | sonnet | Daily Stage 2: ENRICH |
-| signal-detector | Intelligence Officer | sonnet | Daily Stage 3a: DETECT |
-| feed-analyst | Social Media Scout | sonnet | Daily Stage 3b: DETECT (parallel) |
+| signal-detector | Intelligence Officer | sonnet | Daily Stage 2a: DETECT |
+| feed-analyst | Social Media Scout | sonnet | Daily Stage 2b: DETECT (parallel) |
 | post-analyzer | Performance Analyst | sonnet | Weekly + on-demand |
 | report-builder | Reporting Analyst | sonnet | Weekly + on-demand |
 | strategy-evolver | Head of Strategy | opus | Weekly + on-demand (Learning Loop) |

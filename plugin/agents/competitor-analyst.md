@@ -60,7 +60,7 @@ For the competitor's top 3 posts:
 ```bash
 linkedin-cli posts engagers <urn> --limit 50 --json
 ```
-Cross-reference with own contacts (`Grep` in `data/contacts/`):
+Cross-reference with own post engagers:
 - **Shared Engagers**: People who engage with both → valuable
 - **Competitor-only**: Target audience gap
 - Save count in competitor file

@@ -26,12 +26,13 @@ Generates a personalized message for a LinkedIn contact.
 
 ## Workflow
 
-1. **Load contact**: `Grep("<name-or-id>", path="data/contacts/")` → Read matching file
-2. **Start `content-writer` agent** in outreach mode:
-   - Fetch profile data
+1. **Fetch profile live**: `linkedin-cli profile show <name-or-id> --json` → get current headline, company, etc.
+2. **Check signals**: `Grep("<name-or-id>", path="data/signals/")` → find recent interactions (outreach_candidate, comment_reply, etc.)
+3. **Start `content-writer` agent** in outreach mode:
+   - Use live profile data + signal context
    - Use shared interaction as conversation hook
    - Write personalized message
-3. **Show message** — user decides whether/how to send
+4. **Show message** — user decides whether/how to send
 
 ## Message Types
 
