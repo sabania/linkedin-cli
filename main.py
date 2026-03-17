@@ -24,6 +24,7 @@ from commands.jobs import app as jobs_app
 from commands.company import app as company_app
 from commands.notifications import app as notifications_app
 from commands.signals import app as signals_app
+from commands.config import app as config_app
 
 app = typer.Typer(
     name="linkedin-cli",
@@ -41,26 +42,28 @@ app.add_typer(jobs_app, name="jobs", help="Job search & details")
 app.add_typer(company_app, name="company", help="Company info & updates")
 app.add_typer(notifications_app, name="notifications", help="Notifications")
 app.add_typer(signals_app, name="signals", help="Daily signals & briefing")
+app.add_typer(config_app, name="config", help="CLI settings & rate limits")
 
 
 @app.command()
 def login(
     cookie: str = typer.Option("", "--cookie", "-c", help="Paste li_at cookie manually instead of browser login"),
 ):
-    """Login to LinkedIn. Opens Chrome for you to log in.
+    """Login to LinkedIn.
 
-    The browser will open linkedin.com/login. After you log in,
-    the CLI captures the session cookie automatically. 2FA works fine.
+    Without --cookie: Opens Chrome for you to log in (needs display).
+    With --cookie:    Paste li_at cookie value (works on headless servers).
 
-    Alternatively, pass --cookie to skip the browser.
+    To get li_at: Browser → linkedin.com → DevTools (F12) →
+    Application → Cookies → li_at → copy value.
     """
-    from auth import browser_login
-
     if cookie:
-        typer.echo("Manual cookie mode not supported. Use browser login.")
-        raise typer.Exit(1)
+        from auth import cookie_login
+        cookie_login(cookie)
+    else:
+        from auth import browser_login
+        browser_login()
 
-    browser_login()
     typer.echo("Login successful!")
 
 

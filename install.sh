@@ -42,7 +42,6 @@ rm -rf "$TMP"
 
 # Fix permissions
 chmod +x "$INSTALL_DIR/$BIN_NAME"
-find "$INSTALL_DIR" -name "selenium-manager" -exec chmod +x {} +
 find "$INSTALL_DIR" -name "*.so" -exec chmod +x {} + 2>/dev/null || true
 
 # macOS: remove quarantine attribute

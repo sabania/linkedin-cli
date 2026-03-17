@@ -9,6 +9,7 @@ tools:
   - Grep
 skills:
   - data-schema
+  - linkedin-cli-reference
 ---
 
 # Feed Analyst Agent — Stage 3b: DETECT (parallel)

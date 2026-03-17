@@ -10,6 +10,7 @@ tools:
   - Grep
 skills:
   - data-schema
+  - linkedin-cli-reference
 ---
 
 # Signal Detector Agent — Stage 2: DETECT

@@ -11,6 +11,7 @@ tools:
   - WebSearch
 skills:
   - data-schema
+  - linkedin-cli-reference
 ---
 
 # Content Writer Agent — Content Creator

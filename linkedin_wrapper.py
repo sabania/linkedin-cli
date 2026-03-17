@@ -1,18 +1,103 @@
-"""LinkedIn API wrapper using Selenium to bypass bot detection.
+"""LinkedIn API wrapper using browser automation to bypass bot detection.
 
 LinkedIn actively detects non-browser HTTP clients (PerimeterX/HUMAN Security)
-and invalidates cookies. Using Selenium with a real Chrome instance ensures
-all fingerprinting checks pass.
+and invalidates cookies. Using a real Chrome instance (via Nodriver adapter)
+ensures all fingerprinting checks pass.
 """
 
 import json
+import random
 import time
+import threading
+from collections import deque
+from datetime import date
 from pathlib import Path
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 
 CONFIG_DIR = Path.home() / ".linkedin-cli"
 VOYAGER_API = "https://www.linkedin.com/voyager/api"
+
+
+# ---------------------------------------------------------------------------
+# Anti-detection: Human-like delays
+# ---------------------------------------------------------------------------
+
+def _human_delay(base: float = 4.0, jitter: float = 0.5):
+    """Sleep for a randomized duration around *base* seconds.
+
+    jitter is the fraction of base to vary by (0.5 = ±50%).
+    Uses a Gaussian distribution clipped to [base*(1-jitter), base*(1+jitter)]
+    so most delays cluster near *base* but with natural variation.
+    """
+    low = base * (1 - jitter)
+    high = base * (1 + jitter)
+    delay = random.gauss(base, base * jitter * 0.5)
+    time.sleep(max(low, min(high, delay)))
+
+
+# ---------------------------------------------------------------------------
+# Anti-detection: Rate limiter (burst + daily cap)
+# ---------------------------------------------------------------------------
+
+class _RateLimiter:
+    """Enforces per-minute burst limit and daily API call cap.
+
+    Reads limits from CLI config (set via `linkedin-cli config set`).
+    Persists the daily count to disk so limits survive CLI restarts.
+    """
+
+    DAILY_FILE = CONFIG_DIR / "daily_calls.json"
+
+    def __init__(self):
+        from commands.config import get_setting
+        self._calls_per_minute = get_setting("rate_limits.calls_per_minute", 15)
+        self._daily_limit = get_setting("rate_limits.daily_limit", 80)
+        self._window: deque = deque()  # timestamps of recent calls
+        self._lock = threading.Lock()
+        self._daily_count = self._load_daily_count()
+
+    def _load_daily_count(self) -> int:
+        if self.DAILY_FILE.exists():
+            try:
+                data = json.loads(self.DAILY_FILE.read_text())
+                if data.get("date") == str(date.today()):
+                    return data.get("count", 0)
+            except (json.JSONDecodeError, OSError):
+                pass
+        return 0
+
+    def _save_daily_count(self):
+        self.DAILY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        # Atomic write: temp file + rename to avoid corruption on concurrent access
+        tmp = self.DAILY_FILE.with_suffix(".tmp")
+        tmp.write_text(json.dumps({
+            "date": str(date.today()),
+            "count": self._daily_count,
+        }))
+        tmp.replace(self.DAILY_FILE)
+
+    def acquire(self):
+        """Block until it's safe to make a request. Raises if daily limit hit."""
+        with self._lock:
+            if self._daily_count >= self._daily_limit:
+                raise RuntimeError(
+                    f"Daily LinkedIn API limit reached ({self._daily_limit} calls). "
+                    f"Try again tomorrow to avoid detection."
+                )
+
+            now = time.time()
+            # Purge calls older than 60 seconds
+            while self._window and self._window[0] < now - 60:
+                self._window.popleft()
+
+            # If at burst limit, wait until oldest call exits window
+            if len(self._window) >= self._calls_per_minute:
+                wait = self._window[0] - (now - 60)
+                if wait > 0:
+                    time.sleep(wait + random.uniform(0.1, 0.5))
+
+            self._window.append(time.time())
+            self._daily_count += 1
+            self._save_daily_count()
 
 
 def _urn_to_timestamp(urn_or_id: str) -> str:
@@ -27,11 +112,37 @@ def _urn_to_timestamp(urn_or_id: str) -> str:
 
 
 class LinkedinClient:
-    """LinkedIn client using Selenium for all API calls."""
+    """LinkedIn client using browser automation for all API calls."""
 
-    def __init__(self, driver: webdriver.Chrome):
+    def __init__(self, driver):
         self.driver = driver
         self._me_cache = None
+        self._limiter = _RateLimiter()
+
+    def _navigate(self, url: str):
+        """Navigate to a URL with rate limiting."""
+        self._limiter.acquire()
+        self.driver.get(url)
+
+    def _wait_for_performance_entry(self, pattern: str, timeout: float = 10.0) -> str | None:
+        """Poll performance entries until one matching *pattern* appears.
+
+        Returns the full URL string, or None after timeout.
+        """
+        import time as _time
+        deadline = _time.time() + timeout
+        while _time.time() < deadline:
+            url = self.driver.execute_script(f'''
+            var entries = performance.getEntriesByType("resource");
+            for (var i = 0; i < entries.length; i++) {{
+                if (entries[i].name.indexOf("{pattern}") >= 0) return entries[i].name;
+            }}
+            return null;
+            ''')
+            if url:
+                return url
+            _time.sleep(0.5)
+        return None
 
     def _dismiss_modal(self):
         """Dismiss any cookie consent banner or overlay modal."""
@@ -57,6 +168,7 @@ class LinkedinClient:
 
     def _api_get(self, endpoint: str) -> dict:
         """Execute a Voyager API GET request via the browser."""
+        self._limiter.acquire()
         url = f"{VOYAGER_API}{endpoint}"
 
         # Use JavaScript fetch() inside the real browser
@@ -137,12 +249,12 @@ class LinkedinClient:
         identifier = public_id or urn_id
         if not identifier:
             return []
-        self.driver.get(f"https://www.linkedin.com/in/{identifier}/details/skills/")
-        time.sleep(4)
+        self._navigate(f"https://www.linkedin.com/in/{identifier}/details/skills/")
+        _human_delay(4.0)
         for i in range(5):
             self.driver.execute_script(f"window.scrollTo(0, {(i + 1) * 500})")
-            time.sleep(0.3)
-        time.sleep(1)
+            _human_delay(0.3, 0.4)
+        _human_delay(1.0, 0.4)
         script = r'''
         var main = document.querySelector('main');
         if (!main) return [];
@@ -238,16 +350,8 @@ class LinkedinClient:
             return []
 
         # Load activity page to capture the GraphQL queryId
-        self.driver.get(f"https://www.linkedin.com/in/{identifier}/recent-activity/all/")
-        time.sleep(4)
-
-        urls = self.driver.execute_script(r'''
-        var entries = performance.getEntriesByType("resource");
-        for (var i = 0; i < entries.length; i++) {
-            if (entries[i].name.indexOf("ProfileUpdates") >= 0) return entries[i].name;
-        }
-        return null;
-        ''')
+        self._navigate(f"https://www.linkedin.com/in/{identifier}/recent-activity/all/")
+        urls = self._wait_for_performance_entry("ProfileUpdates")
         if not urls:
             return []
 
@@ -309,17 +413,10 @@ class LinkedinClient:
     def get_feed_posts(self, limit=25, exclude_promoted_posts=True) -> list:
         """Get feed posts via GraphQL API with pagination."""
         # Load feed page to capture the GraphQL queryId
-        self.driver.get("https://www.linkedin.com/feed/")
-        time.sleep(4)
+        self._navigate("https://www.linkedin.com/feed/")
 
         import re
-        feed_url = self.driver.execute_script(r'''
-        var entries = performance.getEntriesByType("resource");
-        for (var i = 0; i < entries.length; i++) {
-            if (entries[i].name.indexOf("MainFeed") >= 0) return entries[i].name;
-        }
-        return null;
-        ''')
+        feed_url = self._wait_for_performance_entry("MainFeed")
         if not feed_url:
             return []
 
@@ -395,19 +492,12 @@ class LinkedinClient:
     def _get_post_analytics_list(self, activity_id: str, result_type: str, limit: int) -> list:
         """Get reactions/comments/reposts via the analytics GraphQL API with pagination."""
         # Load analytics page to capture queryId
-        self.driver.get(
+        self._navigate(
             f"https://www.linkedin.com/analytics/post/urn:li:activity:{activity_id}/?resultType={result_type}"
         )
-        time.sleep(4)
 
         import re as _re
-        qid_url = self.driver.execute_script(r'''
-        var entries = performance.getEntriesByType("resource");
-        for (var i = 0; i < entries.length; i++) {
-            if (entries[i].name.indexOf("AnalyticsObject") >= 0) return entries[i].name;
-        }
-        return null;
-        ''')
+        qid_url = self._wait_for_performance_entry("AnalyticsObject")
 
         if not qid_url:
             return []
@@ -459,8 +549,8 @@ class LinkedinClient:
         """Get comments on a post by loading the post page (scraping — analytics API has no comment text)."""
         limit = comment_count or limit
         activity_id = post_urn.split(":")[-1]
-        self.driver.get(f"https://www.linkedin.com/feed/update/urn:li:activity:{activity_id}/")
-        time.sleep(4)
+        self._navigate(f"https://www.linkedin.com/feed/update/urn:li:activity:{activity_id}/")
+        _human_delay(4.0)
 
         # Click "load more comments" buttons
         click_count = min(max(3, limit // 10), 15)
@@ -472,7 +562,7 @@ class LinkedinClient:
                 )
                 if not found:
                     break
-                time.sleep(1)
+                _human_delay(1.0, 0.4)
             except Exception:
                 break
 
@@ -632,12 +722,12 @@ class LinkedinClient:
     def get_profile_experiences(self, public_id: str = None, urn_id: str = None) -> list:
         """Get work experiences of a profile by scraping the experience section."""
         profile_id = public_id or urn_id
-        self.driver.get(f"https://www.linkedin.com/in/{profile_id}/details/experience/")
-        time.sleep(4)
+        self._navigate(f"https://www.linkedin.com/in/{profile_id}/details/experience/")
+        _human_delay(4.0)
         for i in range(8):
             self.driver.execute_script(f"window.scrollTo(0, {(i + 1) * 600})")
-            time.sleep(0.3)
-        time.sleep(1)
+            _human_delay(0.3, 0.4)
+        _human_delay(1.0, 0.4)
         script = r'''
         var main = document.querySelector('main');
         if (!main) return [];
@@ -788,8 +878,8 @@ class LinkedinClient:
 
     def get_conversations(self, limit=25) -> list:
         """Get conversations via GraphQL messaging API."""
-        self.driver.get("https://www.linkedin.com/messaging/")
-        time.sleep(4)
+        self._navigate("https://www.linkedin.com/messaging/")
+        self._wait_for_performance_entry("messengerConversations")
 
         qids = self._get_messaging_query_ids()
         conv_qid = qids.get("conversations")
@@ -879,8 +969,8 @@ class LinkedinClient:
         """Fetch messages for a conversation URN via GraphQL."""
         # Ensure messaging page is loaded (for queryId capture)
         if "messaging" not in (self.driver.current_url or ""):
-            self.driver.get("https://www.linkedin.com/messaging/")
-            time.sleep(4)
+            self._navigate("https://www.linkedin.com/messaging/")
+            _human_delay(4.0)
 
         qids = self._get_messaging_query_ids()
         msg_qid = qids.get("messages")
@@ -1120,12 +1210,12 @@ class LinkedinClient:
         limit = max_results or limit
         identifier = public_id or urn_id
         # Scrape company posts page since the API endpoint is deprecated
-        self.driver.get(f"https://www.linkedin.com/company/{identifier}/posts/")
-        time.sleep(4)
+        self._navigate(f"https://www.linkedin.com/company/{identifier}/posts/")
+        _human_delay(4.0)
         scroll_count = min(max(3, limit // 3), 15)
         for i in range(scroll_count):
             self.driver.execute_script(f"window.scrollBy(0, 1000)")
-            time.sleep(0.7)
+            _human_delay(0.7, 0.4)
         script = (
             "var posts = [];"
             "var els = document.querySelectorAll('[data-urn]');"
@@ -1162,8 +1252,8 @@ class LinkedinClient:
     def follow_company(self, public_id: str = None, following_state_urn: str = None, following: bool = True):
         """Follow or unfollow a company by clicking the button on the company page."""
         company_id = public_id or following_state_urn
-        self.driver.get(f"https://www.linkedin.com/company/{company_id}/")
-        time.sleep(4)
+        self._navigate(f"https://www.linkedin.com/company/{company_id}/")
+        _human_delay(4.0)
         # Find follow button by its CSS class (language-independent)
         script = r'''
         var btn = document.querySelector('.org-company-follow-button, button[class*="follow-button"]');
@@ -1183,7 +1273,7 @@ class LinkedinClient:
         result = self.driver.execute_script(script, following)
         # Unfollow triggers a confirmation dialog — click the confirm button
         if isinstance(result, dict) and result.get("needsConfirm"):
-            time.sleep(1)
+            _human_delay(1.0, 0.4)
             self.driver.execute_script(r'''
             var modal = document.querySelector('[role="dialog"], [role="alertdialog"], .artdeco-modal');
             if (modal) {
@@ -1199,7 +1289,7 @@ class LinkedinClient:
                 if (btns.length > 1) btns[btns.length - 1].click();
             }
             ''')
-            time.sleep(1)
+            _human_delay(1.0, 0.4)
         return result
 
     def unfollow_entity(self, urn_id: str):
@@ -1214,8 +1304,8 @@ class LinkedinClient:
             inner = company_details.get("com.linkedin.voyager.jobs.JobPostingCompany", company_details)
             if not inner.get("companyResolutionResult"):
                 try:
-                    self.driver.get(f"https://www.linkedin.com/jobs/view/{job_id}/")
-                    time.sleep(3)
+                    self._navigate(f"https://www.linkedin.com/jobs/view/{job_id}/")
+                    _human_delay(3.0)
                     name = self.driver.execute_script(
                         r'''var links = document.querySelectorAll('a[href*="/company/"]');
                         for (var i = 0; i < links.length; i++) {
@@ -1354,8 +1444,8 @@ class LinkedinClient:
 
         for page in range(1, pages_needed + 1):
             url = f"https://www.linkedin.com/search/results/content/?{'&'.join(params)}&page={page}"
-            self.driver.get(url)
-            time.sleep(6)
+            self._navigate(url)
+            _human_delay(6.0, 0.4)
 
             # Extract activity URNs from page source (order matches DOM)
             source = self.driver.page_source
@@ -1515,8 +1605,8 @@ class LinkedinClient:
 
         while start < limit:
             url = f"{base_url}&start={start}"
-            self.driver.get(url)
-            time.sleep(4)
+            self._navigate(url)
+            _human_delay(4.0)
 
             # Scroll each list item into view to trigger LinkedIn's lazy rendering
             item_count = self.driver.execute_script(
@@ -1527,8 +1617,8 @@ class LinkedinClient:
                     "var items = document.querySelectorAll('.scaffold-layout__list-item');"
                     f"if (items[{i}]) items[{i}].scrollIntoView({{block: 'center'}});"
                 )
-                time.sleep(0.3)
-            time.sleep(1)
+                _human_delay(0.3, 0.4)
+            _human_delay(1.0, 0.4)
 
             page_data = self.driver.execute_script(scrape_script, seen) or {}
             page_results = page_data.get("results", [])
@@ -1547,16 +1637,8 @@ class LinkedinClient:
 
         activity_id = post_urn.split(":")[-1]
         # Load the analytics page to capture the queryId
-        self.driver.get(f"https://www.linkedin.com/analytics/post-summary/urn:li:activity:{activity_id}/")
-        time.sleep(4)
-
-        qid_url = self.driver.execute_script(r'''
-        var entries = performance.getEntriesByType("resource");
-        for (var i = 0; i < entries.length; i++) {
-            if (entries[i].name.indexOf("AnalyticsExports") >= 0) return entries[i].name;
-        }
-        return null;
-        ''')
+        self._navigate(f"https://www.linkedin.com/analytics/post-summary/urn:li:activity:{activity_id}/")
+        qid_url = self._wait_for_performance_entry("AnalyticsExports")
 
         if not qid_url:
             # Try hardcoded queryId

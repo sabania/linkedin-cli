@@ -37,17 +37,16 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Verify selenium installed
-        run: python -c "import selenium; print(f'selenium {selenium.__version__} at {selenium.__file__}')"
+      - name: Verify nodriver installed
+        run: python -c "import nodriver; print('nodriver OK')"
 
       - name: Build binary
-        run: pyinstaller --clean --name ${{ matrix.name }} --collect-all selenium --hidden-import selenium --hidden-import selenium.webdriver --hidden-import selenium.webdriver.chrome --hidden-import selenium.webdriver.chrome.options --hidden-import selenium.webdriver.chrome.service --hidden-import selenium.webdriver.chrome.webdriver --hidden-import selenium.webdriver.chromium --hidden-import selenium.webdriver.chromium.webdriver --hidden-import selenium.webdriver.common --hidden-import selenium.webdriver.remote --hidden-import selenium.webdriver.remote.webdriver --hidden-import selenium.webdriver.remote.errorhandler --hidden-import typer --hidden-import typer.core --hidden-import typer.main --hidden-import click --hidden-import rich --hidden-import rich.console --hidden-import rich.table --hidden-import auth --hidden-import linkedin_wrapper --hidden-import commands --hidden-import commands.profile --hidden-import commands.feed --hidden-import commands.posts --hidden-import commands.connections --hidden-import commands.search --hidden-import commands.messaging --hidden-import commands.jobs --hidden-import commands.company main.py
+        run: pyinstaller --clean --name ${{ matrix.name }} --collect-all nodriver --hidden-import nodriver --hidden-import nodriver.core --hidden-import nodriver.cdp --hidden-import websockets --hidden-import typer --hidden-import typer.core --hidden-import typer.main --hidden-import click --hidden-import rich --hidden-import rich.console --hidden-import rich.table --hidden-import auth --hidden-import nodriver_adapter --hidden-import linkedin_wrapper --hidden-import commands --hidden-import commands.profile --hidden-import commands.feed --hidden-import commands.posts --hidden-import commands.connections --hidden-import commands.search --hidden-import commands.messaging --hidden-import commands.jobs --hidden-import commands.company --hidden-import commands.notifications --hidden-import commands.signals --hidden-import commands.config main.py
 
       - name: Fix permissions (Unix)
         if: runner.os != 'Windows'
         run: |
           chmod +x dist/${{ matrix.name }}/${{ matrix.name }}
-          find dist/${{ matrix.name }}/_internal -name "selenium-manager" -exec chmod +x {} +
           find dist/${{ matrix.name }}/_internal -name "*.so" -exec chmod +x {} +
 
       - name: Create archive (Windows)
