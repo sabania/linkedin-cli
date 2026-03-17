@@ -10,6 +10,7 @@ tools:
   - Grep
 skills:
   - data-schema
+  - linkedin-cli-reference
 ---
 
 # Report Builder Agent — Reporting Analyst

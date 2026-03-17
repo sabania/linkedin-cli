@@ -59,6 +59,9 @@ config.json contains:
 | `data/` | All tracking data (Markdown with YAML frontmatter) |
 | `drafts/` | Post drafts (.md) |
 | `plugin/dashboard.html` | Interactive dashboard |
+| `~/.linkedin-cli/cli_config.json` | CLI settings (rate limits, browser mode) |
+| `~/.linkedin-cli/cookies.json` | LinkedIn session cookies |
+| `~/.linkedin-cli/daily_calls.json` | Daily API call counter |
 
 ## Commands
 

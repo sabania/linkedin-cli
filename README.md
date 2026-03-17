@@ -2,108 +2,54 @@
 
 Command-line tool for managing your LinkedIn account. Read your feed, view profiles, analyze post engagement, manage connections, search people/companies/jobs, and send messages — all from the terminal.
 
-Uses Selenium with a real Chrome browser under the hood, so LinkedIn's bot detection doesn't trigger.
+Uses Nodriver (CDP-based browser automation) under the hood — no WebDriver binary, no `navigator.webdriver` flag, undetectable by LinkedIn's PerimeterX/HUMAN anti-bot system.
 
 ---
 
-## LinkedIn Commander Plugin
+## What's in this Repo
 
-This repo also contains the **LinkedIn Commander Plugin** — a self-learning marketing system with 9 AI agents as a marketing team. It runs on Claude Code and uses the LinkedIn CLI as data source.
+This repo contains **3 things** — install what you need:
 
-**What it does:** Content strategy, post analysis, lead generation, competitor tracking, signal detection — all delta-based with human-in-the-loop. You decide, the agent supports.
+| What | For whom | Install |
+|------|----------|---------|
+| **LinkedIn CLI** | Everyone | Binary or `pip install` |
+| **CLI Reference Plugin** | AI/Claude Code users who want CLI knowledge for their agents | `/plugin install linkedin-cli-reference` |
+| **LinkedIn Commander Plugin** | Marketers who want a full AI marketing team | `/plugin install linkedin-commander` |
 
-> Full plugin documentation: **[plugin/README.md](plugin/README.md)**
+### 1. LinkedIn CLI (the tool itself)
 
-### Quick Start (3 Steps)
+Terminal tool to interact with LinkedIn. Works standalone, no AI needed.
 
-**1. Install LinkedIn CLI + Log in**
 ```bash
-# Windows
-irm https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.ps1 | iex
-
-# macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.sh | bash
-
-# Log in (one-time)
-linkedin-cli login
+linkedin-cli profile show williamhgates
+linkedin-cli posts analytics 7438407227096539136
+linkedin-cli search people "software engineer" --limit 5
 ```
 
-**2. Activate Plugin in Claude Code**
+### 2. CLI Reference Plugin (for AI agents)
+
+A single skill that teaches Claude Code (or any agent) how to use all CLI commands — correct syntax, flags, `--json` output shapes.
+
 ```bash
 # In Claude Code:
-claude --plugin-dir ./plugin
+/plugin marketplace add sabania/linkedin-cli
+/plugin install linkedin-cli-reference
+```
 
-# Or via Marketplace:
+After installing, any agent or subagent can load the `linkedin-cli-reference` skill and knows how to call the CLI via Bash.
+
+### 3. LinkedIn Commander Plugin (full marketing system)
+
+Self-learning marketing system with **9 AI agents** as a marketing team. Content strategy, post analysis, lead generation, competitor tracking, signal detection — all delta-based with human-in-the-loop.
+
+```bash
+# In Claude Code:
 /plugin marketplace add sabania/linkedin-cli
 /plugin install linkedin-commander
-```
-
-**3. Start Setup**
-```
 /setup
 ```
-That's it. The setup wizard guides you through everything:
-- Define your goals and target audience
-- Automatically analyze existing posts (baseline + initial patterns)
-- Analyze competitors
-- Create strategy v1.0
 
-The system starts **warmed up** — not empty.
-
-### After That: Daily Workflow
-
-```
-/auto                    # Morning Check — what happened since yesterday?
-```
-
-You get:
-- Who interacted with your posts (names, not just numbers)
-- How your active posts are performing
-- New signals (outreach candidates, comment replies, keyword mentions)
-- Feed trends and comment opportunities
-- What you should do today
-
-### Create Content
-
-```
-/ideas 5                 # 5 content ideas based on patterns + trends
-/draft <topic>           # Write post (brand voice + proven patterns)
-/draft comment <urn>     # Write strategic comment on someone else's post
-```
-
-### Track Performance
-
-```
-/analyze <urn>           # Analyze single post
-/report                  # Weekly report with KPIs and trends
-/evolve                  # Evolve strategy based on learnings
-```
-
-### Outreach & Competitors
-
-```
-/outreach <name>         # Generate personalized message
-/competitor <name>       # Analyze competitor
-/check                   # Quick status (no API call, instant)
-```
-
-### Dashboard
-
-Open `plugin/dashboard.html` in your browser — interactive dashboard. Posts, Signals, Patterns, Competitors — all at a glance.
-
-### How It Learns
-
-```
-You post → System measures → Detect patterns → Adapt strategy → Better posts
-```
-
-With every post, the system gets smarter. The `strategy-evolver` agent (the "brain") weekly analyzes what works and proposes strategy updates — you confirm or reject.
-
-### Important
-
-- **The agent NEVER posts for you** — it writes drafts, you post manually
-- **No spam** — outreach messages only with your confirmation
-- **Your data stays local** — everything in Markdown files on your machine
+> Full documentation: **[plugin/README.md](plugin/README.md)**
 
 ---
 
@@ -111,8 +57,7 @@ With every post, the system gets smarter. The `strategy-evolver` agent (the "bra
 
 ### Prerequisites
 
-- **Google Chrome** installed (required — Selenium controls it directly)
-- ChromeDriver is auto-downloaded by Selenium, no manual install needed
+- **Google Chrome** installed (Nodriver communicates with it via CDP — no separate ChromeDriver needed)
 
 ### Quick Install
 
@@ -151,7 +96,7 @@ python main.py login
 
 ```powershell
 # Windows
-irm https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.ps1 | iex -Uninstall
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.ps1))) -Uninstall
 ```
 
 ```bash
@@ -159,30 +104,36 @@ irm https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.ps1 | 
 curl -fsSL https://raw.githubusercontent.com/sabania/linkedin-cli/master/install.sh | bash -s -- --uninstall
 ```
 
-## Quick Start
+---
+
+## Login
 
 ```bash
-# 1. Login — opens Chrome, you log in, CLI saves session automatically
+# Opens Chrome — you log in, CLI captures cookies automatically. 2FA works.
 linkedin-cli login
 
-# 2. Verify it worked
-linkedin-cli whoami
+# On headless servers (no display): paste li_at cookie instead
+# Get it from: Browser → linkedin.com → DevTools (F12) → Application → Cookies → li_at
+linkedin-cli login --cookie "AQE..."
 
-# 3. Get started
-linkedin-cli feed list -n 5
-linkedin-cli profile posts <your-public-id> -n 3
-linkedin-cli search people "software engineer" --limit 5
+# Verify
+linkedin-cli whoami
 ```
 
 Login only needs to be done once. Session cookies are stored at `~/.linkedin-cli/cookies.json`.
 
+---
+
 ## CLI Commands
 
-### Authentication
+### Settings
 
 ```bash
-linkedin-cli login                  # Open Chrome to log in
-linkedin-cli whoami                 # Show current profile
+linkedin-cli config show                                # Show all settings + daily usage
+linkedin-cli config set rate_limits.daily_limit 120     # Max API calls per day
+linkedin-cli config set rate_limits.calls_per_minute 20 # Burst limit per minute
+linkedin-cli config set browser.headless false          # Show browser window (debug)
+linkedin-cli config reset                               # Reset to defaults
 ```
 
 ### Profile
@@ -233,13 +184,15 @@ linkedin-cli search people "keyword" --limit 20        # Search people
 linkedin-cli search companies "microsoft"               # Search companies
 linkedin-cli search posts "AI" --date past-week         # Search posts
 linkedin-cli search jobs "python" --limit 10            # Search jobs
+linkedin-cli search groups "data science" --limit 10    # Search groups
+linkedin-cli search events "AI conference" --limit 10   # Search events
 ```
 
 ### Messages
 
 ```bash
 linkedin-cli messages list                              # List conversations
-linkedin-cli messages read <conversation-urn>           # Read conversation
+linkedin-cli messages read "John Doe"                   # Read conversation by name
 linkedin-cli messages send "text" --to <user>           # Send message
 linkedin-cli messages seen <conversation-urn>           # Mark as read
 ```
@@ -251,6 +204,8 @@ linkedin-cli jobs show <job-id>             # Job details
 linkedin-cli jobs skills <job-id>           # Required skills
 linkedin-cli company show <id>              # Company details
 linkedin-cli company updates <id> -n 10     # Company posts
+linkedin-cli company follow <id>            # Follow company
+linkedin-cli company unfollow <id>          # Unfollow company
 ```
 
 ### Signals
@@ -263,7 +218,54 @@ linkedin-cli signals daily --json           # All daily signals in one call
 
 ```bash
 linkedin-cli notifications list -n 20       # Recent notifications
+linkedin-cli notifications list --unread     # Only unread
 ```
+
+All commands support `--json` for machine-readable output.
+
+---
+
+## LinkedIn Commander Plugin
+
+> Full documentation: **[plugin/README.md](plugin/README.md)**
+
+### Quick Start
+
+```bash
+/plugin marketplace add sabania/linkedin-cli
+/plugin install linkedin-commander
+/setup
+```
+
+The setup wizard guides you through everything — goals, audience, historical analysis, competitors, strategy v1.0. The system starts **warmed up**.
+
+### Daily Workflow
+
+```
+/auto                    # Morning Check — what happened since yesterday?
+/ideas 5                 # Content ideas based on patterns + trends
+/draft <topic>           # Write post (brand voice + proven patterns)
+/analyze <urn>           # Analyze post performance
+/report                  # Weekly report with KPIs
+/evolve                  # Evolve strategy based on learnings
+/outreach <name>         # Personalized outreach message
+/competitor <name>       # Analyze competitor
+/check                   # Quick status (no API call, instant)
+```
+
+### How It Learns
+
+```
+You post → System measures → Detect patterns → Adapt strategy → Better posts
+```
+
+### Important
+
+- **The agent NEVER posts for you** — it writes drafts, you post manually
+- **No spam** — outreach messages only with your confirmation
+- **Your data stays local** — everything in Markdown files on your machine
+
+---
 
 ## Example Workflow
 
@@ -283,6 +285,50 @@ linkedin-cli connections add mirko-eberlein -m "Great to connect!"
 
 All profile IDs returned by `posts reactions` and `posts comments` are directly usable in other commands.
 
+---
+
+## Architecture
+
+```
+linkedin-cli/
+├── main.py                 # CLI entry point (Typer)
+├── auth.py                 # Login + cookie management (Nodriver)
+├── nodriver_adapter.py     # Sync adapter: Nodriver async → Selenium-compatible API
+├── linkedin_wrapper.py     # Core LinkedIn client (rate-limited, randomized delays)
+├── commands/               # Subcommand modules
+│   ├── profile.py
+│   ├── feed.py
+│   ├── posts.py
+│   ├── connections.py
+│   ├── search.py
+│   ├── messaging.py
+│   ├── jobs.py
+│   ├── company.py
+│   └── config.py           # CLI settings (rate limits, browser mode)
+├── plugin/                 # LinkedIn Commander Plugin (full marketing system)
+│   ├── .claude-plugin/
+│   │   └── plugin.json
+│   ├── agents/             # 9 AI Agents
+│   ├── skills/             # 13 Skills (inkl. CLI Reference)
+│   └── dashboard.html      # Interactive dashboard
+├── plugin-cli-reference/   # CLI Reference Plugin (standalone, lightweight)
+│   ├── .claude-plugin/
+│   │   └── plugin.json
+│   └── skills/
+│       └── linkedin-cli-reference/
+├── tests/
+├── requirements.txt
+└── pytest.ini
+```
+
+## Data Storage
+
+| Path | Purpose |
+|------|---------|
+| `~/.linkedin-cli/cookies.json` | Session cookies (created by `login`) |
+| `~/.linkedin-cli/cli_config.json` | CLI settings (rate limits, browser mode) |
+| `~/.linkedin-cli/daily_calls.json` | Daily API call counter |
+
 ## Build Binary
 
 ```bash
@@ -300,44 +346,6 @@ pytest tests/ -v
 ```
 
 Tests are fully dynamic — they use whatever account is currently logged in.
-
-## Architecture
-
-```
-linkedin-cli/
-├── main.py                 # CLI entry point (Typer)
-├── auth.py                 # Login + cookie management (Selenium)
-├── linkedin_wrapper.py     # Core LinkedIn client
-├── commands/               # Subcommand modules
-│   ├── profile.py
-│   ├── feed.py
-│   ├── posts.py
-│   ├── connections.py
-│   ├── search.py
-│   ├── messaging.py
-│   ├── jobs.py
-│   └── company.py
-├── data/                   # Tracking data (Markdown file-per-record)
-├── drafts/                 # Post drafts (.md)
-├── plugin/                 # LinkedIn Commander Plugin (Claude Code)
-│   ├── .claude-plugin/
-│   │   └── plugin.json
-│   ├── agents/             # 9 AI Agents
-│   ├── skills/             # 12 Skills/Commands
-│   ├── dashboard.html      # Interactive dashboard
-│   ├── README.md           # Plugin documentation
-│   └── LICENSE
-├── tests/
-├── requirements.txt
-└── pytest.ini
-```
-
-## Data Storage
-
-| Path | Purpose |
-|------|---------|
-| `~/.linkedin-cli/cookies.json` | Session cookies (created by `login`) |
-| `~/.linkedin-cli/chrome_profile/` | Chrome profile for visible login sessions |
 
 ## License
 

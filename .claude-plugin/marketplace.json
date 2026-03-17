@@ -9,6 +9,12 @@
       "version": "3.0.3",
       "description": "9 AI agents as a marketing team: content strategy, post analysis, lead generation, competitor tracking. Delta-based pipeline with human-in-the-loop.",
       "source": "./plugin"
+    },
+    {
+      "name": "linkedin-cli-reference",
+      "version": "1.0.0",
+      "description": "Complete command reference for linkedin-cli. Gives AI agents the knowledge to use all CLI commands with correct syntax, flags, and JSON output shapes.",
+      "source": "./plugin-cli-reference"
     }
   ]
 }

@@ -1,0 +1,10 @@
+{
+  "name": "linkedin-cli-reference",
+  "description": "Complete command reference for linkedin-cli. Gives AI agents and Claude Code the knowledge to use all CLI commands with correct syntax, flags, and JSON output shapes.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Arben Sabani"
+  },
+  "repository": "https://github.com/asabani/linkedin-cli",
+  "license": "MIT"
+}

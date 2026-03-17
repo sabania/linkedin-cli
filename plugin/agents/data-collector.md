@@ -10,6 +10,7 @@ tools:
   - Grep
 skills:
   - data-schema
+  - linkedin-cli-reference
 ---
 
 # Data Collector Agent — Stage 1: COLLECT
