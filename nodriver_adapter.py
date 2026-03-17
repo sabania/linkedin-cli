@@ -9,8 +9,22 @@ no navigator.webdriver, no cdc_ variables. Undetectable by PerimeterX/HUMAN.
 
 import asyncio
 import json
+import builtins
 
 import nodriver as uc
+
+# Suppress Nodriver's "successfully removed temp profile" messages.
+# Nodriver uses print() in its atexit handler instead of logging.
+_original_print = builtins.print
+
+
+def _quiet_print(*args, **kwargs):
+    if args and isinstance(args[0], str) and "successfully removed temp profile" in args[0]:
+        return
+    _original_print(*args, **kwargs)
+
+
+builtins.print = _quiet_print
 
 
 def _deserialize(obj):
