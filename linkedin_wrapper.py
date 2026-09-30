@@ -100,6 +100,39 @@ class _RateLimiter:
             self._save_daily_count()
 
 
+def _participant_name(participant: dict) -> str:
+    """Display name of a messaging participant, whichever flavour it is.
+
+    A participant is a member, an organization (company pages, LinkedIn's own
+    notices) or a custom sender (sponsored InMail), and only one of those
+    subtrees is populated.
+    """
+    def text_of(value) -> str:
+        """Unwrap an AttributedText field, tolerating a bare string."""
+        if isinstance(value, dict):
+            return (value.get("text") or "").strip()
+        return str(value).strip() if value else ""
+
+    ptype = (participant or {}).get("participantType") or {}
+    if not isinstance(ptype, dict):
+        return ""
+
+    member = ptype.get("member")
+    if isinstance(member, dict):
+        full = f"{text_of(member.get('firstName'))} {text_of(member.get('lastName'))}".strip()
+        if full:
+            return full
+
+    for kind in ("organization", "custom"):
+        info = ptype.get(kind)
+        if isinstance(info, dict):
+            name = text_of(info.get("name"))
+            if name:
+                return name
+
+    return ""
+
+
 def _urn_to_timestamp(urn_or_id: str) -> str:
     """Extract timestamp from a LinkedIn Snowflake activity ID. Returns ISO 8601 UTC string."""
     from datetime import datetime, timezone
@@ -930,15 +963,19 @@ class LinkedinClient:
             for p in parts:
                 if my_urn in p.get("entityUrn", ""):
                     continue
-                pt = (p.get("participantType") or {})
-                member = (pt.get("member") or {})
-                fn = member.get("firstName") or {}
-                ln = member.get("lastName") or {}
-                fn_text = fn.get("text", "") if isinstance(fn, dict) else str(fn)
-                ln_text = ln.get("text", "") if isinstance(ln, dict) else str(ln)
-                full = f"{fn_text} {ln_text}".strip()
+                full = _participant_name(p)
                 if full:
                     names.append(full)
+
+            # LinkedIn now returns conversationParticipants with the name
+            # subtrees emptied out, so every conversation came back as
+            # "Unknown". The creator entry still carries a usable name.
+            if not names:
+                creator = el.get("creator") or {}
+                if my_urn not in (creator.get("hostIdentityUrn") or ""):
+                    full = _participant_name(creator)
+                    if full:
+                        names.append(full)
 
             # Get last message preview
             msgs = el.get("messages") or {}
